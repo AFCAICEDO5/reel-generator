@@ -3,6 +3,7 @@ google-genai
 openai
 edge-tts
 moviepy
+faster-whisper
 pillow
 requests
 numpy
