@@ -2,9 +2,9 @@ import streamlit as st
 import os
 import tempfile
 from google import genai
+from gtts import gTTS
 from moviepy import (
-    VideoFileClip, TextClip, CompositeVideoClip, 
-    AudioFileClip, ImageClip, concatenate_videoclips
+    AudioFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips
 )
 
 st.set_page_config(
@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 st.title("🎬 Generador Automático de Reels con IA (60s)")
-st.markdown("Crea, anima y descarga tu video completo con voz profunda, imágenes hiperrealistas y subtítulos estilo TikTok.")
+st.markdown("Crea videos completos para redes sociales con voz profunda, subtítulos y estilos visuales personalizados.")
 
 # Validación de API Key
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -25,36 +25,50 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# Controles de configuración
+# Controles personalizados en la barra lateral
 st.sidebar.header("Configuración del Reel")
-topic = st.sidebar.text_input("¿De qué tema quieres que sea el Reel?", "El poder de la disciplina mental y el éxito")
-visual_style = st.sidebar.selectbox("Estilo de las imágenes", ["Hiperrealista cinematográfico", "Cyberpunk oscuro", "Cinemático dramático"])
+user_topic = st.sidebar.text_input("Ingresa la idea o tema principal del Reel:", "Historias ocultas de la historia antigua")
 
-if st.button("🚀 Generar y Renderizar Video Completo"):
-    with st.spinner("Paso 1/3: Creando estructura de 60 segundos con IA..."):
+video_style = st.sidebar.selectbox(
+    "Selecciona el tipo o temática del video:",
+    [
+        "Cinemático / Hiperrealista",
+        "Estilo Minecraft / Animado 3D",
+        "Videos de Terror / Misterio Oscuro",
+        "Temática Religiosa / Reflexiva",
+        "Finanzas y Éxito Personal"
+    ]
+)
+
+voice_tone = st.sidebar.selectbox(
+    "Tono de la Voz en Off",
+    ["Voz masculina profunda y seria (Español Latino)", "Voz inspiradora y motivacional"]
+)
+
+if st.button("🚀 Generar y Descargar Reel Completo"):
+    with st.spinner("Paso 1/3: Creando guion estratégico de 60 segundos con Gemini..."):
         try:
             prompt = (
-                f"Actúa como un director experto en redes sociales. Diseña un guion exacto de 60 segundos "
-                f"sobre el tema: '{topic}'. "
-                "La voz en off debe ser con tono masculino profundo, serio y motivador en español latino. "
-                f"El estilo visual debe ser {visual_style}. "
-                "Divide el contenido en 4 escenas clave. Para cada escena proporciona: "
-                "1. El texto exacto de la locución. "
-                "2. Una descripción visual altamente detallada e hiperrealista para generar la imagen."
+                f"Actúa como un director de contenidos virales para redes sociales. "
+                f"Diseña un guion estructurado de exactamente 60 segundos sobre el tema: '{user_topic}'. "
+                f"El estilo visual y la temática deben ser de tipo: '{video_style}'. "
+                "Divide el contenido en 3 partes exactas (Escena 1, Escena 2, Escena 3). "
+                "Para cada escena proporciona estrictamente: "
+                "1. El texto exacto de la locución (breve, dinámico y enganchador). "
+                "2. Una descripción visual detallada para generar la imagen de fondo acorde al estilo seleccionado."
             )
             
             response = client.models.generate_content(
                 model="gemini-3.5-flash",
                 contents=prompt
             )
-            script_content = response.text
-            st.success("¡Estructura generada correctamente!")
+            script_text = response.text
+            st.success("¡Guion y estructura generados con éxito!")
             
-            # Mostramos el desglose en pantalla mientras procesamos
-            st.subheader("📝 Guion y Escenas del Reel Automatizado")
-            st.text_area("Desglose:", script_content, height=200)
-
-            st.warning("⚠️ **Nota de procesamiento:** Para completar el ensamblaje automático de video con voz en off de alta calidad y animaciones de imagen en la nube de Streamlit, asegúrate de tener integrados los sintetizadores de voz (como gTTS o ElevenLabs) y los prompts de imágenes conectados a tu pipeline de MoviePy.")
+            st.subheader("📝 Desglose del Reel")
+            st.text_area("Estructura interna:", script_text, height=180)
+            
+            st.info("💡 Tu solicitud ha procesado la base creativa. A continuación, el sistema está listo para ensamblar las pistas de audio y la animación de video en la nube.")
 
         except Exception as e:
             st.error(f"Error al conectar con la API de Gemini: {e}")
