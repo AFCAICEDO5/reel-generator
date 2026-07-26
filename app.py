@@ -4,14 +4,9 @@ import tempfile
 import streamlit as st
 from google import genai
 import edge_tts
-from moviepy.video.VideoClip import ImageClip
-from moviepy.audio.io.AudioFileClip import AudioFileClip
-from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
-from moviepy.video.compositing.concatenate import concatenate_videoclips
-from moviepy.text.TextClip import TextClip
+from moviepy.editor import ImageClip, AudioFileClip, TextClip, CompositeVideoClip, concatenate_videoclips
 import numpy as np
 from PIL import Image
-
 # Configuración de página de Streamlit
 st.set_page_config(page_title="Generador Automático de Reels con IA", page_icon="🎬", layout="centered")
 
