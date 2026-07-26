@@ -1,9 +1,7 @@
 streamlit
 google-genai
-openai
 edge-tts
-moviepy>=2.0.0
-faster-whisper
+moviepy
+numpy
 pillow
 requests
-numpy
