@@ -1,11 +1,4 @@
 streamlit
-google-genai
-edge-tts
 moviepy==1.0.3
-numpy
-pillow
-requests
-proglog
-decorator==4.4.2
-imageio==2.15.0
-imageio-ffmpeg>=0.4.3
+imageio==2.31.6
+imageio-ffmpeg==0.4.9
