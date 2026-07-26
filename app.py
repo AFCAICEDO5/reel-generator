@@ -4,7 +4,7 @@ import tempfile
 from google import genai
 from gtts import gTTS
 from moviepy import (
-    AudioFileClip, ColorClip, CompositeVideoClip, TextClip
+    AudioFileClip, ColorClip, CompositeVideoClip
 )
 
 st.set_page_config(
@@ -30,11 +30,13 @@ client = genai.Client(api_key=api_key)
 # -------------------------------------------------------------
 st.sidebar.header("🛠️ Configuración de tu Reel")
 
+# 1. Campo de texto para que escribas tu propia idea o tema
 user_topic = st.sidebar.text_input(
     "1. Escribe la idea o tema principal:", 
     value="El misterio de las pirámides de Egipto y sus secretos ocultos"
 )
 
+# 2. Selector de estilo visual / temática
 video_style = st.sidebar.selectbox(
     "2. Selecciona la temática visual:",
     [
@@ -46,6 +48,7 @@ video_style = st.sidebar.selectbox(
     ]
 )
 
+# 3. Selector de voz en off (con opción profunda latina)
 voice_option = st.sidebar.selectbox(
     "3. Selecciona la Voz en Off:",
     [
@@ -55,18 +58,10 @@ voice_option = st.sidebar.selectbox(
     ]
 )
 
-# Paleta de colores temáticos para dar dinamismo visual al fondo del video
-style_colors = {
-    "Cinemático / Hiperrealista": (20, 30, 50),       # Azul cian elegante
-    "Estilo Minecraft / Animado 3D": (34, 139, 34),    # Verde vibrante
-    "Videos de Terror / Misterio Oscuro": (40, 10, 10),# Rojo sangre / oscuro
-    "Temática Religiosa / Reflexiva": (60, 40, 80),    # Morado solemne
-    "Finanzas y Éxito Personal": (10, 50, 30)          # Verde esmeralda corporativo
-}
-
 if st.button("🚀 Generar y Renderizar Reel Completo"):
     with st.spinner("Paso 1/3: Creando guion persuasivo con Gemini adaptado a tu tema..."):
         try:
+            # Forzamos a Gemini a usar estrictamente el tema y el estilo ingresados por ti
             prompt = (
                 f"Actúa como un creador de contenido viral experto. "
                 f"Redacta un guion dinámico, directo y atrapante de aproximadamente 45 a 60 segundos sobre este tema específico proporcionado por el usuario: '{user_topic}'. "
@@ -84,7 +79,7 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
             st.text_area("Texto exacto para la locución:", narration_text, height=130)
 
             with st.spinner("Paso 2/3: Sintetizando la voz en off seleccionada..."):
-                # Configurar acento y parámetros de gTTS según la voz elegida
+                # Asignar acento latino ('com.co') de acuerdo a tu selección de voz
                 tld_choice = 'com.co' if 'Latino' in voice_option or 'Profunda' in voice_option else 'es'
                 
                 tts = gTTS(text=narration_text, lang='es', tld=tld_choice)
@@ -92,15 +87,23 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                 tts.save(audio_path)
                 
                 audio_clip = AudioFileClip(audio_path)
-                duration = min(audio_clip.duration, 60) # Tope máximo de 60 segundos
+                duration = min(audio_clip.duration, 60) # Máximo 60 segundos
 
                 st.info(f"Duración estimada del Reel: {round(duration, 1)} segundos.")
 
             with st.spinner("Paso 3/3: Renderizando video dinámico y subtítulos..."):
-                # Seleccionar color dinámico según la temática elegida
-                bg_color = style_colors.get(video_style, (20, 20, 30))
-                
-                # Crear fondo con dimensiones verticales optimizadas para Reels (360x640)
+                # Asignar colores dinámicos basados en la temática elegida para evitar pantallas oscuras planas
+                if "Terror" in video_style:
+                    bg_color = (30, 10, 10)
+                elif "Minecraft" in video_style:
+                    bg_color = (34, 139, 34)
+                elif "Religiosa" in video_style:
+                    bg_color = (50, 30, 70)
+                elif "Finanzas" in video_style:
+                    bg_color = (10, 40, 30)
+                else:
+                    bg_color = (15, 25, 45)
+
                 bg_clip = ColorClip(size=(360, 640), color=bg_color, duration=duration)
                 
                 # Sincronizar audio con el video
