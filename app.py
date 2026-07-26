@@ -4,7 +4,10 @@ import tempfile
 import streamlit as st
 from google import genai
 import edge_tts
-from moviepy.editor import ImageSequenceClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
+from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+from moviepy.audio.io.AudioFileClip import AudioFileClip
+from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
+from moviepy.video.compositing.concatenate import concatenate_videoclips
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import json
@@ -226,11 +229,11 @@ if st.button("🚀 Generar Reel de 60s"):
                     
                     scene_frames.append(np.array(frame_img))
                 
-                scene_clip = ImageSequenceClip(scene_frames, fps=fps).set_duration(duracion_por_escena)
+                scene_clip = ImageSequenceClip(scene_frames, fps=fps).with_duration(duracion_por_escena)
                 clips_video.append(scene_clip)
                 
             video_final = concatenate_videoclips(clips_video, method="compose")
-            video_final = video_final.set_audio(audio_clip)
+            video_final = video_final.with_audio(audio_clip)
             
             # ----------------------------------------------------
             # PASO 4: Renderizar MP4 final (1080x1920)
