@@ -4,9 +4,9 @@ import tempfile
 from google import genai
 from gtts import gTTS
 from moviepy import (
-    AudioFileClip, ImageClip, CompositeVideoClip, TextClip, concatenate_videoclips
+    AudioFileClip, ImageClip, CompositeVideoClip, TextClip, concatenate_videoclips, ColorClip
 )
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(
     page_title="Generador Automático de Reels (60s)",
@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 st.title("🎬 Generador Profesional de Reels con IA (60s)")
-st.markdown("Crea videos completos con imágenes hiperrealistas, voz profunda latina y subtítulos estilo TikTok.")
+st.markdown("Crea videos con imágenes hiperrealistas generadas por IA, múltiples voces naturales y subtítulos estilo TikTok.")
 
 # Validación de la API Key
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -52,8 +52,8 @@ voice_option = st.sidebar.selectbox(
     [
         "Voz Masculina Profunda (Español Latino - Épica/Seria)",
         "Voz Masculina Joven (Español Latino - Dinámica)",
-        "Voz Femenina Suave (Español Latino)",
-        "Voz de Narrador Misterioso (Español de España)"
+        "Voz Femenina Natural (Español Latino)",
+        "Voz Narrador Solemne (Español Neutro)"
     ]
 )
 
@@ -61,12 +61,12 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
     with st.spinner("Paso 1/4: Diseñando guion y segmentación visual con Gemini..."):
         try:
             prompt = (
-                f"Actúa como un director de videos virales. Diseña un guion estructurado de 3 escenas cortas "
-                f"sobre el tema: '{user_topic}', adaptado al estilo: '{video_style}'. "
-                "Devuelve la respuesta estrictamente separada por escenas en este formato exacto: "
-                "ESCENA 1 | [Texto para la voz] | [Descripción visual detallada para generar la imagen hiperrealista]\n"
-                "ESCENA 2 | [Texto para la voz] | [Descripción visual detallada para generar la imagen hiperrealista]\n"
-                "ESCENA 3 | [Texto para la voz] | [Descripción visual detallada para generar la imagen hiperrealista]"
+                f"Actúa como un director de videos virales. Diseña un guion estructurado de exactamente 3 escenas cortas "
+                f"sobre el tema: '{user_topic}', adaptado al estilo visual: '{video_style}'. "
+                "Devuelve la respuesta estrictamente separada por líneas con este formato exacto: "
+                "ESCENA 1 | [Texto corto y atrapante para la voz] | [Descripción visual detallada para generar una imagen hiperrealista]\n"
+                "ESCENA 2 | [Texto corto y atrapante para la voz] | [Descripción visual detallada para generar una imagen hiperrealista]\n"
+                "ESCENA 3 | [Texto corto y atrapante para la voz] | [Descripción visual detallada para generar una imagen hiperrealista]"
             )
             
             response = client.models.generate_content(
@@ -75,10 +75,10 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
             )
             raw_output = response.text.strip()
             
-            st.success("¡Estructura y guion generados con éxito!")
+            st.success("¡Estructura de guion generada con éxito!")
             st.text_area("Desglose del Guion:", raw_output, height=120)
 
-            # Procesamiento de escenas
+            # Procesamiento y extracción de escenas
             scenes_data = []
             lines = raw_output.split("\n")
             full_narration = ""
@@ -93,16 +93,17 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                         scenes_data.append({"text": text_part, "visual": visual_part})
             
             if not scenes_data:
-                # Fallback por si la IA varía el formato
                 full_narration = user_topic
-                scenes_data = [{"text": user_topic, "visual": f"Hyperrealistic 8k image of {user_topic}, cinematic lighting"}]
+                scenes_data = [{"text": user_topic, "visual": f"Hyperrealistic 8k cinematic shot of {user_topic}"}]
 
             with st.spinner("Paso 2/4: Sintetizando la voz en off seleccionada..."):
-                # Configurar acentos según la opción de voz elegida para evitar que suene genérica
-                if "Español de España" in voice_option:
+                # Configurar acentos y parámetros de gTTS según la voz seleccionada
+                if "Solemne" in voice_option:
                     tld_choice = 'es'
+                elif "Femenina" in voice_option:
+                    tld_choice = 'com.mx'
                 else:
-                    tld_choice = 'com.co' # Variante latina con gTTS
+                    tld_choice = 'com.co' # Variante latina profunda por defecto
                 
                 tts = gTTS(text=full_narration.strip(), lang='es', tld=tld_choice)
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
@@ -112,15 +113,16 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                 total_duration = min(audio_clip.duration, 60)
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/4: Generando imágenes hiperrealistas y aplicando subtítulos TikTok..."):
+            with st.spinner("Paso 3/4: Generando imágenes hiperrealistas y subtítulos dinámicos..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
-                    # Generar imagen mediante Imagen 3 / Generative AI SDK para asegurar contenido visual real
+                    img_clip = None
+                    # Intentar generar imagen hiperrealista mediante Imagen 3[span_1](start_span)[span_1](end_span)
                     try:
                         img_response = client.models.generate_images(
                             model='imagen-3.0-generate-002',
-                            prompt=f"{scene['visual']}, vertical 9:16 aspect ratio, ultra-detailed, 8k resolution, cinematic composition",
+                            prompt=f"{scene['visual']}, vertical 9:16 aspect ratio, ultra-detailed, 8k resolution, cinematic lighting, photorealistic",
                             config=dict(
                                 number_of_images=1,
                                 output_mime_type="image/jpeg",
@@ -134,20 +136,22 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                                 f.write(image_bytes)
                             img_clip = ImageClip(img_path).with_duration(scene_duration)
                     except Exception:
-                        # Fallback visual si la cuota de imágenes de la API experimenta restricciones temporales
-                        from moviepy import ColorClip
-                        bg_colors = [(20, 30, 50), (40, 10, 10), (10, 40, 30)]
-                        img_clip = ColorClip(size=(1080, 1920), color=bg_colors[i % len(bg_colors)], duration=scene_duration)
+                        pass
+                    
+                    # Fallback visual garantizado (evita pantalla negra si la cuota de imágenes satura)
+                    if img_clip is None:
+                        fallback_colors = [(15, 32, 67), (45, 10, 20), (10, 50, 40), (50, 40, 10)]
+                        img_clip = ColorClip(size=(1080, 1920), color=fallback_colors[i % len(fallback_colors)], duration=scene_duration)
 
-                    # Crear subtítulos grandes estilo TikTok centrados en pantalla
+                    # Generar subtítulos grandes y legibles estilo TikTok usando Pillow incrustado en MoviePy
                     try:
                         txt_clip = TextClip(
                             text=scene['text'],
-                            font_size=55,
+                            font_size=60,
                             color='white',
                             font='Arial-Bold',
                             stroke_color='black',
-                            stroke_width=3,
+                            stroke_width=4,
                             size=(950, None),
                             method='caption'
                         ).with_duration(scene_duration).with_position(('center', 'center'))
@@ -158,7 +162,6 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
 
                     clip_list.append(video_scene)
 
-                # Concatenar todas las escenas
                 final_visual = concatenate_videoclips(clip_list)
                 final_video = final_visual.with_audio(audio_clip)
 
