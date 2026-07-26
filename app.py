@@ -5,7 +5,6 @@ import streamlit as st
 from google import genai
 import edge_tts
 from moviepy.editor import ImageSequenceClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import json
 
