@@ -4,9 +4,10 @@ import tempfile
 from google import genai
 from gtts import gTTS
 from moviepy import (
-    AudioFileClip, ImageClip, CompositeVideoClip, TextClip, concatenate_videoclips, ColorClip
+    AudioFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips
 )
 from PIL import Image, ImageDraw, ImageFont
+import textwrap
 
 st.set_page_config(
     page_title="Generador Automático de Reels (60s)",
@@ -17,7 +18,6 @@ st.set_page_config(
 st.title("🎬 Generador Profesional de Reels con IA (60s)")
 st.markdown("Crea videos con imágenes hiperrealistas generadas por IA, múltiples voces naturales y subtítulos estilo TikTok.")
 
-# Validación de la API Key
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
@@ -78,7 +78,6 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
             st.success("¡Estructura de guion generada con éxito!")
             st.text_area("Desglose del Guion:", raw_output, height=120)
 
-            # Procesamiento y extracción de escenas
             scenes_data = []
             lines = raw_output.split("\n")
             full_narration = ""
@@ -97,13 +96,12 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                 scenes_data = [{"text": user_topic, "visual": f"Hyperrealistic 8k cinematic shot of {user_topic}"}]
 
             with st.spinner("Paso 2/4: Sintetizando la voz en off seleccionada..."):
-                # Configurar acentos y parámetros de gTTS según la voz seleccionada
                 if "Solemne" in voice_option:
                     tld_choice = 'es'
                 elif "Femenina" in voice_option:
                     tld_choice = 'com.mx'
                 else:
-                    tld_choice = 'com.co' # Variante latina profunda por defecto
+                    tld_choice = 'com.co' # Variante latina profunda
                 
                 tts = gTTS(text=full_narration.strip(), lang='es', tld=tld_choice)
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
@@ -113,12 +111,12 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                 total_duration = min(audio_clip.duration, 60)
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/4: Generando imágenes hiperrealistas y subtítulos dinámicos..."):
+            with st.spinner("Paso 3/4: Generando imágenes hiperrealistas y subtítulos estilo TikTok..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
-                    img_clip = None
-                    # Intentar generar imagen hiperrealista mediante Imagen 3[span_1](start_span)[span_1](end_span)
+                    img_path = None
+                    # Generación de imagen hiperrealista mediante Imagen 3[span_0](start_span)[span_0](end_span)
                     try:
                         img_response = client.models.generate_images(
                             model='imagen-3.0-generate-002',
@@ -134,33 +132,51 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                             img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                             with open(img_path, "wb") as f:
                                 f.write(image_bytes)
-                            img_clip = ImageClip(img_path).with_duration(scene_duration)
                     except Exception:
                         pass
                     
-                    # Fallback visual garantizado (evita pantalla negra si la cuota de imágenes satura)
-                    if img_clip is None:
-                        fallback_colors = [(15, 32, 67), (45, 10, 20), (10, 50, 40), (50, 40, 10)]
-                        img_clip = ColorClip(size=(1080, 1920), color=fallback_colors[i % len(fallback_colors)], duration=scene_duration)
+                    # Si la API de imágenes experimenta restricciones de cuota, creamos un fondo texturizado base
+                    if not img_path:
+                        base_img = Image.new('RGB', (1080, 1920), color=(15, 25, 45))
+                        img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+                        base_img.save(img_path)
 
-                    # Generar subtítulos grandes y legibles estilo TikTok usando Pillow incrustado en MoviePy
+                    # Incrustar subtítulos grandes estilo TikTok directamente sobre la imagen usando Pillow
                     try:
-                        txt_clip = TextClip(
-                            text=scene['text'],
-                            font_size=60,
-                            color='white',
-                            font='Arial-Bold',
-                            stroke_color='black',
-                            stroke_width=4,
-                            size=(950, None),
-                            method='caption'
-                        ).with_duration(scene_duration).with_position(('center', 'center'))
+                        img_pil = Image.open(img_path).convert("RGB")
+                        draw = ImageDraw.Draw(img_pil)
                         
-                        video_scene = CompositeVideoClip([img_clip, txt_clip])
-                    except Exception:
-                        video_scene = img_clip
+                        try:
+                            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 65)
+                        except:
+                            font = ImageFont.load_default()
 
-                    clip_list.append(video_scene)
+                        wrapped_text = textwrap.fill(scene['text'], width=22)
+                        
+                        bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font)
+                        text_width = bbox[2] - bbox[0]
+                        text_height = bbox[3] - bbox[1]
+                        
+                        x = (1080 - text_width) / 2
+                        y = (1920 - text_height) / 2
+                        
+                        # Dibujar contorno negro grueso para estilo TikTok legible
+                        offset = 5
+                        for adj_x in range(-offset, offset + 1):
+                            for adj_y in range(-offset, offset + 1):
+                                draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill="black", align="center")
+                        
+                        # Texto principal en blanco
+                        draw.multiline_text((x, y), wrapped_text, font=font, fill="white", align="center")
+                        
+                        subbed_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+                        img_pil.save(subbed_img_path)
+                        
+                        img_clip = ImageClip(subbed_img_path).with_duration(scene_duration)
+                    except Exception:
+                        img_clip = ImageClip(img_path).with_duration(scene_duration)
+
+                    clip_list.append(img_clip)
 
                 final_visual = concatenate_videoclips(clip_list)
                 final_video = final_visual.with_audio(audio_clip)
