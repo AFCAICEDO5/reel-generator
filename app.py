@@ -106,7 +106,7 @@ if st.button("🚀 Generar Reel de 60s"):
             duracion_total = audio_clip.duration
             
             # ----------------------------------------------------
-            # PASO 3: Preparar Imágenes de Fondo y Texto integrado por PIL
+            # PASO 3: Preparar Fondos Visuales y Texto con Pillow
             # ----------------------------------------------------
             status_text.text("Paso 3/4: Renderizando fotogramas verticales (1080x1920)...")
             progress_bar.progress(75)
@@ -114,46 +114,58 @@ if st.button("🚀 Generar Reel de 60s"):
             clips_video = []
             duracion_por_escena = duracion_total / len(escenas)
             
+            # Paleta de colores atractivos para los fondos de cada escena
+            colores_fondo = [
+                (25, 25, 112),   # Azul noche
+                (75, 0, 130),    # Índigo / Violeta
+                (0, 51, 102),    # Azul oscuro
+                (51, 0, 51)      # Púrpura oscuro
+            ]
+            
             for i, escena in enumerate(escenas):
-                # Crear imagen de fondo base vertical 1080x1920
-                img = Image.new('RGB', (1080, 1920), color=(15 + i*15, 10, 30 + i*20))
+                # Crear imagen de fondo RGB con color definido
+                color_bg = colores_fondo[i % len(colores_fondo)]
+                img = Image.new('RGB', (1080, 1920), color=color_bg)
                 draw = ImageDraw.Draw(img)
                 
-                # Intentar cargar una fuente del sistema o usar la predeterminada
+                # Añadir un elemento visual decorativo (círculos o formas geométricas sutiles)
+                draw.ellipse([200, 300, 880, 980], fill=(color_bg[0]+40, color_bg[1]+40, color_bg[2]+40))
+                
+                # Intentar cargar fuente o usar la predeterminada
                 try:
-                    font = ImageFont.truetype("DejaVuSans-Bold.ttf", 50)
+                    font = ImageFont.truetype("DejaVuSans-Bold.ttf", 55)
                 except:
                     font = ImageFont.load_default()
                 
-                # Dividir el texto en líneas para que encaje en la pantalla
+                # Dividir el texto en líneas limpias
                 palabras = escena["texto_voz"].split(" ")
                 lineas = []
                 linea_actual = ""
                 for palabra in palabras:
                     test_linea = linea_actual + palabra + " "
-                    if len(test_linea) > 35:
+                    if len(test_linea) > 30:
                         lineas.append(linea_actual)
                         linea_actual = palabra + " "
                     else:
                         linea_actual = test_linea
                 lineas.append(linea_actual)
                 
-                # Dibujar texto centrado en la parte inferior
-                y_text = 1350
+                # Dibujar texto centrado en la parte inferior con borde negro de alto contraste
+                y_text = 1200
                 for linea in lineas:
-                    # Dibujar borde negro para legibilidad
-                    draw.text((100-2, y_text-2), linea, font=font, fill="black")
-                    draw.text((100+2, y_text-2), linea, font=font, fill="black")
-                    draw.text((100-2, y_text+2), linea, font=font, fill="black")
-                    draw.text((100+2, y_text+2), linea, font=font, fill="black")
-                    # Texto principal blanco
+                    # Sombra / Borde
+                    draw.text((100-3, y_text-3), linea, font=font, fill="black")
+                    draw.text((100+3, y_text-3), linea, font=font, fill="black")
+                    draw.text((100-3, y_text+3), linea, font=font, fill="black")
+                    draw.text((100+3, y_text+3), linea, font=font, fill="black")
+                    # Texto principal
                     draw.text((100, y_text), linea, font=font, fill="white")
-                    y_text += 70
+                    y_text += 80
                 
-                img_path = os.path.join(temp_dir, f"scene_{i}.png")
-                img.save(img_path)
+                # Convertir la imagen Pillow directamente a un arreglo numpy para que MoviePy la renderice perfecto
+                frame_np = np.array(img)
                 
-                img_clip = ImageClip(img_path).with_duration(duracion_por_escena)
+                img_clip = ImageClip(frame_np).with_duration(duracion_por_escena)
                 clips_video.append(img_clip)
                 
             video_final = concatenate_videoclips(clips_video, method="compose")
@@ -178,7 +190,7 @@ if st.button("🚀 Generar Reel de 60s"):
             progress_bar.progress(100)
             status_text.text("¡Listo! Reel generado con éxito.")
             
-            st.success("🎉 ¡Tu Reel de 60 segundos está listo para descargar y publicar!")
+            st.success("🎉 ¡Tu Reel de 60 segundos está listo con fondos coloridos, texto y voz!")
             st.video(output_mp4)
             
             with open(output_mp4, "rb") as file:
