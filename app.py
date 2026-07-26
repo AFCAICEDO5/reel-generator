@@ -6,14 +6,16 @@ from google import genai
 import edge_tts
 from moviepy import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import json
+import requests
+from io import BytesIO
 
 # Configuración de página de Streamlit
 st.set_page_config(page_title="Generador Automático de Reels con IA", page_icon="🎬", layout="centered")
 
 st.title("🎬 Generador Automático de Reels (60s) con IA")
-st.markdown("Ingresa una idea principal y esta aplicación creará un Reel completo con guion de Gemini, voz en off natural (Edge-TTS) e imágenes sincronizadas.")
+st.markdown("Ingresa una idea principal y esta aplicación creará un Reel completo con guion de Gemini, voz en off natural (Edge-TTS) e imágenes fotográficas sincronizadas.")
 
 # Entrada de la idea principal
 idea = st.text_input("💡 Idea principal del Reel:", "Curiosidades impactantes sobre el espacio y los agujeros negros que te dejarán sin aliento")
@@ -106,34 +108,39 @@ if st.button("🚀 Generar Reel de 60s"):
             duracion_total = audio_clip.duration
             
             # ----------------------------------------------------
-            # PASO 3: Preparar Fondos Visuales y Texto con Pillow
+            # PASO 3: Descargar Imágenes de Fondo y Procesar Subtítulos
             # ----------------------------------------------------
-            status_text.text("Paso 3/4: Renderizando fotogramas verticales (1080x1920)...")
+            status_text.text("Paso 3/4: Descargando imágenes cinematográficas y aplicando subtítulos...")
             progress_bar.progress(75)
             
             clips_video = []
             duracion_por_escena = duracion_total / len(escenas)
             
-            # Paleta de colores atractivos para los fondos de cada escena
-            colores_fondo = [
-                (25, 25, 112),   # Azul noche
-                (75, 0, 130),    # Índigo / Violeta
-                (0, 51, 102),    # Azul oscuro
-                (51, 0, 51)      # Púrpura oscuro
-            ]
-            
             for i, escena in enumerate(escenas):
-                # Crear imagen de fondo RGB con color definido
-                color_bg = colores_fondo[i % len(colores_fondo)]
-                img = Image.new('RGB', (1080, 1920), color=color_bg)
+                # Descargar una fotografía de fondo aleatoria de alta calidad adaptada a formato vertical
+                img_url = f"https://picsum.photos/seed/reelscene{i+10}/1080/1920"
+                try:
+                    res = requests.get(img_url, timeout=10)
+                    img = Image.open(BytesIO(res.content)).convert('RGB')
+                except:
+                    # Imagen de respaldo en caso de fallo de red
+                    img = Image.new('RGB', (1080, 1920), color=(20, 20, 30))
+                
+                # Aplicar un ligero oscurecimiento general para que el texto resalte perfectamente
+                img = img.filter(ImageFilter.SMOOTH)
+                
                 draw = ImageDraw.Draw(img)
                 
-                # Añadir un elemento visual decorativo (círculos o formas geométricas sutiles)
-                draw.ellipse([200, 300, 880, 980], fill=(color_bg[0]+40, color_bg[1]+40, color_bg[2]+40))
+                # Capa semitransparente oscura en la parte inferior para mejorar la lectura de los subtítulos
+                overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+                draw_overlay = ImageDraw.Draw(overlay)
+                draw_overlay.rectangle([50, 1150, 1030, 1850], fill=(0, 0, 0, 160)) # Rectángulo oscuro translúcido
+                img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
+                draw = ImageDraw.Draw(img)
                 
                 # Intentar cargar fuente o usar la predeterminada
                 try:
-                    font = ImageFont.truetype("DejaVuSans-Bold.ttf", 55)
+                    font = ImageFont.truetype("DejaVuSans-Bold.ttf", 52)
                 except:
                     font = ImageFont.load_default()
                 
@@ -150,21 +157,20 @@ if st.button("🚀 Generar Reel de 60s"):
                         linea_actual = test_linea
                 lineas.append(linea_actual)
                 
-                # Dibujar texto centrado en la parte inferior con borde negro de alto contraste
-                y_text = 1200
+                # Dibujar texto centrado en la zona inferior
+                y_text = 1250
                 for linea in lineas:
-                    # Sombra / Borde
-                    draw.text((100-3, y_text-3), linea, font=font, fill="black")
-                    draw.text((100+3, y_text-3), linea, font=font, fill="black")
-                    draw.text((100-3, y_text+3), linea, font=font, fill="black")
-                    draw.text((100+3, y_text+3), linea, font=font, fill="black")
-                    # Texto principal
-                    draw.text((100, y_text), linea, font=font, fill="white")
-                    y_text += 80
+                    # Sombra de alto contraste
+                    draw.text((90-2, y_text-2), linea, font=font, fill="black")
+                    draw.text((90+2, y_text-2), linea, font=font, fill="black")
+                    draw.text((90-2, y_text+2), linea, font=font, fill="black")
+                    draw.text((90+2, y_text+2), linea, font=font, fill="black")
+                    # Texto principal blanco
+                    draw.text((90, y_text), linea, font=font, fill="white")
+                    y_text += 75
                 
-                # Convertir la imagen Pillow directamente a un arreglo numpy para que MoviePy la renderice perfecto
+                # Convertir a arreglo numpy para MoviePy
                 frame_np = np.array(img)
-                
                 img_clip = ImageClip(frame_np).with_duration(duracion_por_escena)
                 clips_video.append(img_clip)
                 
@@ -190,7 +196,7 @@ if st.button("🚀 Generar Reel de 60s"):
             progress_bar.progress(100)
             status_text.text("¡Listo! Reel generado con éxito.")
             
-            st.success("🎉 ¡Tu Reel de 60 segundos está listo con fondos coloridos, texto y voz!")
+            st.success("🎉 ¡Tu Reel de 60 segundos está listo con fotografías reales de fondo y subtítulos!")
             st.video(output_mp4)
             
             with open(output_mp4, "rb") as file:
