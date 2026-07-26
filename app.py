@@ -26,7 +26,7 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 # -------------------------------------------------------------
-# CONTROLES DE LA BARRA LATERAL (Conectados de forma interactiva)
+# CONTROLES INTERACTIVOS EN LA BARRA LATERAL (Entradas del Usuario)
 # -------------------------------------------------------------
 st.sidebar.header("🛠️ Configuración de tu Reel")
 
@@ -55,7 +55,7 @@ voice_option = st.sidebar.selectbox(
     ]
 )
 
-# Diccionario de colores de fondo según la temática para evitar videos oscuros planos
+# Paleta de colores temáticos para dar dinamismo visual al fondo del video
 style_colors = {
     "Cinemático / Hiperrealista": (20, 30, 50),       # Azul cian elegante
     "Estilo Minecraft / Animado 3D": (34, 139, 34),    # Verde vibrante
@@ -65,12 +65,12 @@ style_colors = {
 }
 
 if st.button("🚀 Generar y Renderizar Reel Completo"):
-    with st.spinner("Paso 1/3: Creando guion persuasivo con Gemini..."):
+    with st.spinner("Paso 1/3: Creando guion persuasivo con Gemini adaptado a tu tema..."):
         try:
             prompt = (
                 f"Actúa como un creador de contenido viral experto. "
-                f"Redacta un guion dinámico, directo y atrapante de aproximadamente 45 a 60 segundos sobre este tema: '{user_topic}'. "
-                f"El tono debe ajustarse a la temática: '{video_style}'. "
+                f"Redacta un guion dinámico, directo y atrapante de aproximadamente 45 a 60 segundos sobre este tema específico proporcionado por el usuario: '{user_topic}'. "
+                f"El tono debe ajustarse estrictamente a la temática: '{video_style}'. "
                 "Devuelve únicamente el texto de la locución que dirá el narrador, sin viñetas de escenas ni notas de director."
             )
             
@@ -84,7 +84,7 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
             st.text_area("Texto exacto para la locución:", narration_text, height=130)
 
             with st.spinner("Paso 2/3: Sintetizando la voz en off seleccionada..."):
-                # Configurar acento latino o internacional según la elección
+                # Configurar acento y parámetros de gTTS según la voz elegida
                 tld_choice = 'com.co' if 'Latino' in voice_option or 'Profunda' in voice_option else 'es'
                 
                 tts = gTTS(text=narration_text, lang='es', tld=tld_choice)
