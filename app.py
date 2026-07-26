@@ -128,7 +128,7 @@ if st.button("🚀 Generar Reel de 60s"):
                     stroke_width=2,
                     size=(900, None),
                     method='caption'
-                ).with_duration(duracion_por_escena).with_position(('center', 1300))
+                ).set_duration(duracion_por_escena).set_position(('center', 1300))
                 
                 video_escena = CompositeVideoClip([img_clip, txt_clip])
                 clips_video.append(video_escena)
