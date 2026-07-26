@@ -4,7 +4,7 @@ import tempfile
 from google import genai
 from gtts import gTTS
 from moviepy import (
-    AudioFileClip, ImageClip, CompositeVideoClip, TextClip, concatenate_videoclips, ColorClip
+    AudioFileClip, ColorClip, CompositeVideoClip, TextClip
 )
 
 st.set_page_config(
@@ -13,8 +13,8 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("🎬 Generador Profesional de Reels con IA (60s)")
-st.markdown("Crea videos optimizados para redes sociales con voz profunda, imágenes dinámicas y subtítulos estilo TikTok.")
+st.title("🎬 Generador Automático de Reels con IA (60s)")
+st.markdown("Crea, personaliza y descarga tu video completo con voz en off, subtítulos y estilos visuales dinámicos.")
 
 # Validación de la API Key
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -25,12 +25,18 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# Controles de personalización en la barra lateral
-st.sidebar.header("🛠️ Configuración del Reel")
-user_topic = st.sidebar.text_input("Ingresa la idea o tema principal:", "El misterio de las ciudades perdidas en la selva")
+# -------------------------------------------------------------
+# CONTROLES DE LA BARRA LATERAL (Conectados de forma interactiva)
+# -------------------------------------------------------------
+st.sidebar.header("🛠️ Configuración de tu Reel")
+
+user_topic = st.sidebar.text_input(
+    "1. Escribe la idea o tema principal:", 
+    value="El misterio de las pirámides de Egipto y sus secretos ocultos"
+)
 
 video_style = st.sidebar.selectbox(
-    "Selecciona la temática visual:",
+    "2. Selecciona la temática visual:",
     [
         "Cinemático / Hiperrealista",
         "Estilo Minecraft / Animado 3D",
@@ -41,53 +47,63 @@ video_style = st.sidebar.selectbox(
 )
 
 voice_option = st.sidebar.selectbox(
-    "Selecciona la Voz en Off:",
+    "3. Selecciona la Voz en Off:",
     [
         "Voz Masculina Profunda (Español Latino - Épica/Seria)",
         "Voz Motivacional e Inspiradora (Español Latino)",
-        "Voz Femenina Dinámica (Español Latino)"
+        "Voz Estándar Latino"
     ]
 )
 
+# Diccionario de colores de fondo según la temática para evitar videos oscuros planos
+style_colors = {
+    "Cinemático / Hiperrealista": (20, 30, 50),       # Azul cian elegante
+    "Estilo Minecraft / Animado 3D": (34, 139, 34),    # Verde vibrante
+    "Videos de Terror / Misterio Oscuro": (40, 10, 10),# Rojo sangre / oscuro
+    "Temática Religiosa / Reflexiva": (60, 40, 80),    # Morado solemne
+    "Finanzas y Éxito Personal": (10, 50, 30)          # Verde esmeralda corporativo
+}
+
 if st.button("🚀 Generar y Renderizar Reel Completo"):
-    with st.spinner("Paso 1/3: Creando guion estratégico de 60 segundos con Gemini..."):
+    with st.spinner("Paso 1/3: Creando guion persuasivo con Gemini..."):
         try:
             prompt = (
-                f"Actúa como un director de contenidos virales. Diseña un guion estructurado de exactamente 60 segundos "
-                f"sobre el tema: '{user_topic}'. "
-                f"La temática visual debe ser: '{video_style}'. "
-                "Divide el contenido en 3 escenas clave. "
-                "Para cada escena proporciona estrictamente: "
-                "1. Texto exacto para la locución de esa escena. "
-                "2. Una descripción visual detallada para generar o representar la imagen de fondo."
+                f"Actúa como un creador de contenido viral experto. "
+                f"Redacta un guion dinámico, directo y atrapante de aproximadamente 45 a 60 segundos sobre este tema: '{user_topic}'. "
+                f"El tono debe ajustarse a la temática: '{video_style}'. "
+                "Devuelve únicamente el texto de la locución que dirá el narrador, sin viñetas de escenas ni notas de director."
             )
             
             response = client.models.generate_content(
                 model="gemini-3.5-flash",
                 contents=prompt
             )
-            script_data = response.text
+            narration_text = response.text.strip()
             
-            st.success("¡Estructura de guion creada con éxito!")
-            st.text_area("Desglose del Guion:", script_data, height=150)
+            st.success("¡Guion generado con éxito!")
+            st.text_area("Texto exacto para la locución:", narration_text, height=130)
 
-            with st.spinner("Paso 2/3: Sintetizando la voz en off y preparando recursos visuales..."):
-                # Configuración de acentos/idioma según la voz seleccionada
-                tld_choice = 'com.co' if 'Latino' in voice_option else 'es'
+            with st.spinner("Paso 2/3: Sintetizando la voz en off seleccionada..."):
+                # Configurar acento latino o internacional según la elección
+                tld_choice = 'com.co' if 'Latino' in voice_option or 'Profunda' in voice_option else 'es'
                 
-                # Generación de audio con gTTS adaptado
-                tts = gTTS(text=user_topic + ". " + script_data[:400], lang='es', tld=tld_choice)
+                tts = gTTS(text=narration_text, lang='es', tld=tld_choice)
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
                 tts.save(audio_path)
                 
                 audio_clip = AudioFileClip(audio_path)
-                duration = min(audio_clip.duration, 60)
+                duration = min(audio_clip.duration, 60) # Tope máximo de 60 segundos
 
-            with st.spinner("Paso 3/3: Renderizando video dinámico con subtítulos y efectos..."):
-                # Crear fondo dinámico vertical (Estilo Reel: 360x640 para render fluido en la nube)
-                bg_clip = ColorClip(size=(360, 640), color=(10, 10, 20), duration=duration)
+                st.info(f"Duración estimada del Reel: {round(duration, 1)} segundos.")
+
+            with st.spinner("Paso 3/3: Renderizando video dinámico y subtítulos..."):
+                # Seleccionar color dinámico según la temática elegida
+                bg_color = style_colors.get(video_style, (20, 20, 30))
                 
-                # Sincronización de audio y video
+                # Crear fondo con dimensiones verticales optimizadas para Reels (360x640)
+                bg_clip = ColorClip(size=(360, 640), color=bg_color, duration=duration)
+                
+                # Sincronizar audio con el video
                 final_video = bg_clip.with_audio(audio_clip)
                 
                 output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
@@ -100,7 +116,7 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                     logger=None
                 )
                 
-                st.success("¡Video generado con éxito!")
+                st.success("¡Video renderizado con éxito!")
                 st.video(output_path)
                 
                 with open(output_path, "rb") as file:
@@ -112,4 +128,4 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                     )
 
         except Exception as e:
-            st.error(f"Error durante el proceso: {e}")
+            st.error(f"Error durante el proceso de renderizado: {e}")
