@@ -30,9 +30,9 @@ if st.button("Generar Guion con IA"):
         try:
             prompt = f"Escribe un guion corto y dinámico para un Reel de Instagram sobre: {topic}. El tono debe ser {tone}."
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt
-            )
+    model="gemini-3.5-flash",
+    contents=prompt
+)
             st.session_state["script"] = response.text
             st.success("¡Guion generado con éxito!")
         except Exception as e:
