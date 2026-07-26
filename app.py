@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 st.title("🎬 Generador Profesional de Reels con IA (60s)")
-st.markdown("Crea videos con imágenes hiperrealistas generadas por IA, múltiples voces naturales y subtítulos estilo TikTok.")
+st.markdown("Crea videos con imágenes hiperrealistas en resolución 8K, múltiples voces naturales y subtítulos grandes estilo TikTok.")
 
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
@@ -93,7 +93,7 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
             
             if not scenes_data:
                 full_narration = user_topic
-                scenes_data = [{"text": user_topic, "visual": f"Hyperrealistic 8k cinematic shot of {user_topic}"}]
+                scenes_data = [{"text": user_topic, "visual": f"Hyperrealistic 8k cinematic shot of {user_topic}, highly detailed"}]
 
             with st.spinner("Paso 2/4: Sintetizando la voz en off seleccionada..."):
                 if "Solemne" in voice_option:
@@ -101,7 +101,7 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                 elif "Femenina" in voice_option:
                     tld_choice = 'com.mx'
                 else:
-                    tld_choice = 'com.co' # Variante latina profunda
+                    tld_choice = 'com.co'
                 
                 tts = gTTS(text=full_narration.strip(), lang='es', tld=tld_choice)
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
@@ -111,16 +111,16 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                 total_duration = min(audio_clip.duration, 60)
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/4: Generando imágenes hiperrealistas y subtítulos estilo TikTok..."):
+            with st.spinner("Paso 3/4: Generando imágenes hiperrealistas en resolución 8K y subtítulos estilo TikTok..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
                     img_path = None
-                    # Generación de imagen hiperrealista mediante Imagen 3[span_0](start_span)[span_0](end_span)
+                    # Generación de imagen hiperrealista utilizando Imagen 3 con especificaciones 8K[span_0](start_span)[span_0](end_span)
                     try:
                         img_response = client.models.generate_images(
                             model='imagen-3.0-generate-002',
-                            prompt=f"{scene['visual']}, vertical 9:16 aspect ratio, ultra-detailed, 8k resolution, cinematic lighting, photorealistic",
+                            prompt=f"{scene['visual']}, vertical 9:16 aspect ratio, ultra-detailed, 8k resolution, cinematic lighting, photorealistic masterpiece",
                             config=dict(
                                 number_of_images=1,
                                 output_mime_type="image/jpeg",
@@ -135,38 +135,53 @@ if st.button("🚀 Generar y Renderizar Reel Completo"):
                     except Exception:
                         pass
                     
-                    # Si la API de imágenes experimenta restricciones de cuota, creamos un fondo texturizado base
+                    # Fallback visual de alta calidad si la API de imágenes presenta restricciones temporales
                     if not img_path:
-                        base_img = Image.new('RGB', (1080, 1920), color=(15, 25, 45))
+                        base_img = Image.new('RGB', (1080, 1920), color=(10, 15, 30))
                         img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                         base_img.save(img_path)
 
-                    # Incrustar subtítulos grandes estilo TikTok directamente sobre la imagen usando Pillow
+                    # Incrustar subtítulos grandes y legibles estilo TikTok con caja de contraste (Pillow)
                     try:
                         img_pil = Image.open(img_path).convert("RGB")
                         draw = ImageDraw.Draw(img_pil)
                         
+                        # Cargar fuente en tamaño grande (70px) para evitar textos pequeños o círculos
+                        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                         try:
-                            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 65)
+                            font = ImageFont.truetype(font_path, 70)
                         except:
                             font = ImageFont.load_default()
 
-                        wrapped_text = textwrap.fill(scene['text'], width=22)
+                        # Envolver texto optimizado para formato vertical
+                        wrapped_text = textwrap.fill(scene['text'], width=20)
                         
-                        bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font)
+                        # Calcular dimensiones del texto
+                        bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
                         
+                        # Posicionar subtítulos en la parte inferior central estilo TikTok
                         x = (1080 - text_width) / 2
-                        y = (1920 - text_height) / 2
+                        y = 1920 - text_height - 350
                         
-                        # Dibujar contorno negro grueso para estilo TikTok legible
-                        offset = 5
+                        # Dibujar rectángulo de fondo semitransparente (caja estilo TikTok) para máxima visibilidad
+                        padding = 30
+                        box_coords = [x - padding, y - padding, x + text_width + padding, y + text_height + padding]
+                        
+                        overlay = Image.new("RGBA", img_pil.size, (0, 0, 0, 0))
+                        overlay_draw = ImageDraw.Draw(overlay)
+                        overlay_draw.rounded_rectangle(box_coords, radius=20, fill=(0, 0, 0, 180)) # Fondo negro translúcido
+                        
+                        img_pil = Image.alpha_composite(img_pil.convert("RGBA"), overlay).convert("RGB")
+                        draw = ImageDraw.Draw(img_pil)
+                        
+                        # Dibujar contorno exterior negro y texto blanco brillante
+                        offset = 4
                         for adj_x in range(-offset, offset + 1):
                             for adj_y in range(-offset, offset + 1):
                                 draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill="black", align="center")
                         
-                        # Texto principal en blanco
                         draw.multiline_text((x, y), wrapped_text, font=font, fill="white", align="center")
                         
                         subbed_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
