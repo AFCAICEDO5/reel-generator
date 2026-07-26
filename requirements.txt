@@ -2,7 +2,7 @@ streamlit
 google-genai
 openai
 edge-tts
-moviepy
+moviepy==1.0.3
 faster-whisper
 pillow
 requests
