@@ -1,8 +1,9 @@
 import streamlit as st
 import os
 import tempfile
+import asyncio
+import edge_tts
 from google import genai
-from gtts import gTTS
 from moviepy import (
     AudioFileClip, ImageClip, concatenate_videoclips
 )
@@ -10,13 +11,13 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 st.set_page_config(
-    page_title="Generador de Reels Estilo Viral",
+    page_title="Generador de Reels con Voz Neuronal",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Estilo Viral")
-st.markdown("Crea videos con subtítulos grandes en mayúsculas, borde negro marcado y estilo idéntico a los mejores Reels y TikToks.")
+st.title("🎬 Generador de Reels con Voz Neuronal Natural")
+st.markdown("Crea videos con locución 100% humana, imágenes garantizadas por escena y subtítulos gigantes estilo viral.")
 
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
@@ -25,6 +26,13 @@ if not api_key:
     st.stop()
 
 client = genai.Client(api_key=api_key)
+
+# -------------------------------------------------------------
+# FUNCION ASÍNCRONA PARA VOZ NEURONAL ULTRA-NATURAL
+# -------------------------------------------------------------
+async def generate_neural_voice(text, voice_name, output_path):
+    communicate = edge_tts.Communicate(text, voice_name)
+    await communicate.save(output_path)
 
 # -------------------------------------------------------------
 # CONTROLES INTERACTIVOS EN LA BARRA LATERAL
@@ -48,16 +56,28 @@ video_style = st.sidebar.selectbox(
 )
 
 voice_option = st.sidebar.selectbox(
-    "3. Selecciona la Voz Natural:",
+    "3. Selecciona la Voz Neuronal (100% Humana):",
     [
-        "Voz Natural Latinoamericana (México - Alta Fluidez)",
-        "Voz Profunda Épica (Argentina - Tono Serio)",
-        "Voz Dinámica (Colombia - Acento Claro)",
-        "Voz Narrador Solemne (España - Neutro)"
+        "México - Dalia (Femenina Natural y Fluida)",
+        "México - Jorge (Masculina Profunda y Clara)",
+        "Colombia - Gonzalo (Masculina Dinámica)",
+        "Colombia - Salome (Femenina Cálida)",
+        "Argentina - Tomás (Masculina Cercana)"
     ]
 )
 
-if st.button("🚀 Generar Reel con Subtítulos Estilo Viral (60s)"):
+# Mapeo de voces neuronales de alta calidad
+voice_mapping = {
+    "México - Dalia (Femenina Natural y Fluida)": "es-MX-DaliaNeural",
+    "México - Jorge (Masculina Profunda y Clara)": "es-MX-JorgeNeural",
+    "Colombia - Gonzalo (Masculina Dinámica)": "es-CO-GonzaloNeural",
+    "Colombia - Salome (Femenina Cálida)": "es-CO-SalomeNeural",
+    "Argentina - Tomás (Masculina Cercana)": "es-AR-TomasNeural"
+}
+
+selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
+
+if st.button("🚀 Generar Reel con Voz Neuronal y Subtítulos Gigantes (60s)"):
     with st.spinner("Paso 1/4: Generando guion estructurado de 6 escenas..."):
         try:
             prompt = (
@@ -99,25 +119,15 @@ if st.button("🚀 Generar Reel con Subtítulos Estilo Viral (60s)"):
                 full_narration = user_topic.upper()
                 scenes_data = [{"text": user_topic.upper(), "visual": f"Hyperrealistic 8k cinematic shot of {user_topic}, highly detailed"}]
 
-            with st.spinner("Paso 2/4: Sintetizando voz natural..."):
-                if "México" in voice_option:
-                    tld_choice = 'com.mx'
-                elif "Argentina" in voice_option:
-                    tld_choice = 'com.ar'
-                elif "España" in voice_option:
-                    tld_choice = 'es'
-                else:
-                    tld_choice = 'com.co'
-                
-                tts = gTTS(text=full_narration.strip(), lang='es', tld=tld_choice, slow=False)
+            with st.spinner("Paso 2/4: Sintetizando locución con Voz Neuronal 100% Humana..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                tts.save(audio_path)
+                asyncio.run(generate_neural_voice(full_narration.strip(), selected_voice_id, audio_path))
                 
                 audio_clip = AudioFileClip(audio_path)
                 total_duration = min(audio_clip.duration, 60)
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/4: Generando imágenes y aplicando el estilo de subtítulos de la imagen de referencia..."):
+            with st.spinner("Paso 3/4: Generando imágenes y aplicando subtítulos gigantes estilo viral..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
@@ -142,46 +152,46 @@ if st.button("🚀 Generar Reel con Subtítulos Estilo Viral (60s)"):
                     except Exception:
                         pass
                     
-                    # Respaldo visual inteligente si la API de imágenes experimenta alta demanda
+                    # Respaldo visual ilustrado avanzado (habitación con haz de luz)
                     if not img_path:
-                        base_img = Image.new('RGB', (1080, 1920), color=(20 + (i*10), 15, 50 + (i*15)))
+                        base_img = Image.new('RGB', (1080, 1920), color=(15, 10, 25))
                         draw_bg = ImageDraw.Draw(base_img)
-                        draw_bg.ellipse([-150, 600, 1200, 1600], fill=(50, 30, 90))
+                        draw_bg.rectangle([0, 1200, 1080, 1920], fill=(90, 55, 30))
+                        draw_bg.rectangle([0, 0, 1080, 1200], fill=(30, 20, 15))
+                        draw_bg.polygon([(400, 1200), (680, 1200), (900, 1920), (180, 1920)], fill=(150, 110, 60))
                         img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                         base_img.save(img_path)
 
-                    # Procesar imagen y quemar subtítulos idénticos a la referencia (Letras blancas gruesas con borde negro centrado)
+                    # Procesar imagen y quemar subtítulos gigantes garantizados
                     try:
                         img_pil = Image.open(img_path).convert("RGB")
                         
                         font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                         try:
-                            font = ImageFont.truetype(font_path, 85) # Tamaño grande idéntico a la referencia
+                            font = ImageFont.truetype(font_path, 95)
                         except:
                             font = ImageFont.load_default()
 
                         scene_text = scene['text']
-                        wrapped_text = textwrap.fill(scene_text, width=16)
+                        wrapped_text = textwrap.fill(scene_text, width=14)
                         
                         draw_temp = ImageDraw.Draw(img_pil)
                         bbox = draw_temp.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
                         
-                        # Ubicación central exacta como en la imagen de referencia
                         x = (1080 - text_width) / 2
-                        y = 1920 / 2 - text_height / 2 + 100
+                        y = (1920 - text_height) / 2 - 100
                         
                         draw = ImageDraw.Draw(img_pil)
                         
-                        # Dibujar contorno negro grueso alrededor del texto blanco (Estilo meme/viral exacto)
-                        outline_range = 7
+                        # Contorno negro súper grueso alrededor del texto blanco
+                        outline_range = 8
                         for adj_x in range(-outline_range, outline_range + 1):
                             for adj_y in range(-outline_range, outline_range + 1):
                                 if adj_x != 0 or adj_y != 0:
                                     draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill="black", align="center")
                         
-                        # Texto principal en blanco puro
                         draw.multiline_text((x, y), wrapped_text, font=font, fill="white", align="center")
                         
                         subbed_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
@@ -207,14 +217,14 @@ if st.button("🚀 Generar Reel con Subtítulos Estilo Viral (60s)"):
                     logger=None
                 )
                 
-                st.success("¡Reel generado con el estilo visual exacto!")
+                st.success("¡Reel generado con éxito con voz neuronal y subtítulos gigantes!")
                 st.video(output_path)
                 
                 with open(output_path, "rb") as file:
                     st.download_button(
-                        label="📥 Descargar Reel Estilo Viral (.mp4)",
+                        label="📥 Descargar Reel con Voz Neuronal (.mp4)",
                         data=file,
-                        file_name="reel_estilo_referencia.mp4",
+                        file_name="reel_voz_neuronal.mp4",
                         mime="video/mp4"
                     )
 
