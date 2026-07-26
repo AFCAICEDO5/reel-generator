@@ -4,16 +4,16 @@ import tempfile
 import streamlit as st
 from google import genai
 import edge_tts
-from moviepy import ImageClip, AudioFileClip, TextClip, CompositeVideoClip, concatenate_videoclips
+from moviepy import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import json
 
 # Configuración de página de Streamlit
 st.set_page_config(page_title="Generador Automático de Reels con IA", page_icon="🎬", layout="centered")
 
 st.title("🎬 Generador Automático de Reels (60s) con IA")
-st.markdown("Ingresa una idea principal y esta aplicación creará un Reel completo con guion de Gemini, voz en off natural (Edge-TTS), imágenes ilustrativas y subtítulos sincronizados.")
+st.markdown("Ingresa una idea principal y esta aplicación creará un Reel completo con guion de Gemini, voz en off natural (Edge-TTS) e imágenes sincronizadas.")
 
 # Entrada de la idea principal
 idea = st.text_input("💡 Idea principal del Reel:", "Curiosidades impactantes sobre el espacio y los agujeros negros que te dejarán sin aliento")
@@ -106,34 +106,55 @@ if st.button("🚀 Generar Reel de 60s"):
             duracion_total = audio_clip.duration
             
             # ----------------------------------------------------
-            # PASO 3: Preparar Imágenes de Fondo y Subtítulos
+            # PASO 3: Preparar Imágenes de Fondo y Texto integrado por PIL
             # ----------------------------------------------------
-            status_text.text("Paso 3/4: Preparando imágenes verticales (1080x1920)...")
+            status_text.text("Paso 3/4: Renderizando fotogramas verticales (1080x1920)...")
             progress_bar.progress(75)
             
             clips_video = []
             duracion_por_escena = duracion_total / len(escenas)
             
             for i, escena in enumerate(escenas):
+                # Crear imagen de fondo base vertical 1080x1920
                 img = Image.new('RGB', (1080, 1920), color=(15 + i*15, 10, 30 + i*20))
+                draw = ImageDraw.Draw(img)
+                
+                # Intentar cargar una fuente del sistema o usar la predeterminada
+                try:
+                    font = ImageFont.truetype("DejaVuSans-Bold.ttf", 50)
+                except:
+                    font = ImageFont.load_default()
+                
+                # Dividir el texto en líneas para que encaje en la pantalla
+                palabras = escena["texto_voz"].split(" ")
+                lineas = []
+                linea_actual = ""
+                for palabra in palabras:
+                    test_linea = linea_actual + palabra + " "
+                    if len(test_linea) > 35:
+                        lineas.append(linea_actual)
+                        linea_actual = palabra + " "
+                    else:
+                        linea_actual = test_linea
+                lineas.append(linea_actual)
+                
+                # Dibujar texto centrado en la parte inferior
+                y_text = 1350
+                for linea in lineas:
+                    # Dibujar borde negro para legibilidad
+                    draw.text((100-2, y_text-2), linea, font=font, fill="black")
+                    draw.text((100+2, y_text-2), linea, font=font, fill="black")
+                    draw.text((100-2, y_text+2), linea, font=font, fill="black")
+                    draw.text((100+2, y_text+2), linea, font=font, fill="black")
+                    # Texto principal blanco
+                    draw.text((100, y_text), linea, font=font, fill="white")
+                    y_text += 70
+                
                 img_path = os.path.join(temp_dir, f"scene_{i}.png")
                 img.save(img_path)
                 
-                # Métodos modernos compatibles con MoviePy 2.x
                 img_clip = ImageClip(img_path).with_duration(duracion_por_escena)
-                
-                txt_clip = TextClip(
-                    text=escena["texto_voz"], 
-                    font_size=45, 
-                    color='white', 
-                    stroke_color='black', 
-                    stroke_width=2,
-                    size=(900, None),
-                    method='caption'
-                ).with_duration(duracion_por_escena).with_position(('center', 1300))
-                
-                video_escena = CompositeVideoClip([img_clip, txt_clip])
-                clips_video.append(video_escena)
+                clips_video.append(img_clip)
                 
             video_final = concatenate_videoclips(clips_video, method="compose")
             video_final = video_final.with_audio(audio_clip)
@@ -150,8 +171,8 @@ if st.button("🚀 Generar Reel de 60s"):
                 fps=24,
                 codec='libx264',
                 audio_codec='aac',
-                preset='medium',
-                bitrate='4000k'
+                preset='ultrafast',
+                bitrate='3000k'
             )
             
             progress_bar.progress(100)
