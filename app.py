@@ -4,7 +4,7 @@ import tempfile
 from google import genai
 from gtts import gTTS
 from moviepy import (
-    AudioFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips
+    AudioFileClip, ColorClip, CompositeVideoClip
 )
 
 st.set_page_config(
@@ -14,9 +14,9 @@ st.set_page_config(
 )
 
 st.title("🎬 Generador Automático de Reels con IA (60s)")
-st.markdown("Crea videos completos para redes sociales con voz profunda, subtítulos y estilos visuales personalizados.")
+st.markdown("Crea, renderiza y descarga tu video completo con voz en off, subtítulos y estilos visuales personalizados.")
 
-# Validación de API Key
+# Validación de la API Key
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
@@ -42,33 +42,69 @@ video_style = st.sidebar.selectbox(
 
 voice_tone = st.sidebar.selectbox(
     "Tono de la Voz en Off",
-    ["Voz masculina profunda y seria (Español Latino)", "Voz inspiradora y motivacional"]
+    ["Voz masculina seria (Español Latino)", "Voz inspiradora y motivacional"]
 )
 
-if st.button("🚀 Generar y Descargar Reel Completo"):
-    with st.spinner("Paso 1/3: Creando guion estratégico de 60 segundos con Gemini..."):
+if st.button("🚀 Generar y Renderizar Reel Completo"):
+    with st.spinner("Paso 1/3: Creando guion y locución con Gemini..."):
         try:
             prompt = (
                 f"Actúa como un director de contenidos virales para redes sociales. "
-                f"Diseña un guion estructurado de exactamente 60 segundos sobre el tema: '{user_topic}'. "
+                f"Diseña un guion breve y directo de aproximadamente 45 a 60 segundos sobre el tema: '{user_topic}'. "
                 f"El estilo visual y la temática deben ser de tipo: '{video_style}'. "
-                "Divide el contenido en 3 partes exactas (Escena 1, Escena 2, Escena 3). "
-                "Para cada escena proporciona estrictamente: "
-                "1. El texto exacto de la locución (breve, dinámico y enganchador). "
-                "2. Una descripción visual detallada para generar la imagen de fondo acorde al estilo seleccionado."
+                "Dame estrictamente un texto continuo para la voz en off, sin etiquetas de escenas ni instrucciones de cámara, "
+                "solo el texto exacto que dirá el narrador de forma atractiva y persuasiva."
             )
             
             response = client.models.generate_content(
                 model="gemini-3.5-flash",
                 contents=prompt
             )
-            script_text = response.text
-            st.success("¡Guion y estructura generados con éxito!")
+            narration_text = response.text.strip()
             
-            st.subheader("📝 Desglose del Reel")
-            st.text_area("Estructura interna:", script_text, height=180)
-            
-            st.info("💡 Tu solicitud ha procesado la base creativa. A continuación, el sistema está listo para ensamblar las pistas de audio y la animación de video en la nube.")
+            st.success("¡Guion generado con éxito!")
+            st.text_area("Texto procesado para la voz:", narration_text, height=120)
+
+            with st.spinner("Paso 2/3: Sintetizando la voz en off y preparando el video..."):
+                # Generar audio con gTTS (español)
+                tts = gTTS(text=narration_text, lang='es', tld='com.co')
+                audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
+                tts.save(audio_path)
+                
+                audio_clip = AudioFileClip(audio_path)
+                duration = audio_clip.duration
+                if duration > 60:
+                    duration = 60 # Límite máximo de 60 segundos
+
+                st.info(f"Duración estimada de la locución: {round(duration, 1)} segundos.")
+
+            with st.spinner("Paso 3/3: Renderizando archivo de video final en la nube..."):
+                # Crear fondo dinámico vertical optimizado para Reels
+                bg_clip = ColorClip(size=(360, 640), color=(15, 15, 25), duration=duration)
+                
+                # Sincronizar audio con el contenedor de video
+                final_video = bg_clip.with_audio(audio_clip)
+                
+                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+                final_video.write_videofile(
+                    output_path,
+                    fps=24,
+                    codec="libx264",
+                    audio_codec="aac",
+                    preset="ultrafast",
+                    logger=None
+                )
+                
+                st.success("¡Video renderizado y listo!")
+                st.video(output_path)
+                
+                with open(output_path, "rb") as file:
+                    st.download_button(
+                        label="📥 Descargar Reel Completo (.mp4)",
+                        data=file,
+                        file_name="reel_generado.mp4",
+                        mime="video/mp4"
+                    )
 
         except Exception as e:
-            st.error(f"Error al conectar con la API de Gemini: {e}")
+            st.error(f"Error durante el proceso de renderizado: {e}")
