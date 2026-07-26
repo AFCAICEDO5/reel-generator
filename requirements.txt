@@ -1,0 +1,7 @@
+google-genai
+streamlit
+edge-tts
+moviepy
+pillow
+requests
+numpy
