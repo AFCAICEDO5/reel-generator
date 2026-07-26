@@ -4,7 +4,7 @@ import tempfile
 import streamlit as st
 from google import genai
 import edge_tts
-from moviepy import ImageSequenceClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
+from moviepy.editor import ImageSequenceClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import json
@@ -102,7 +102,7 @@ if st.button("🚀 Generar Reel de 60s"):
             texto_completo = " ".join([e["texto_voz"] for e in escenas])
             
             async def generar_audio(texto, voz, output_path):
-                communicate = edge_tts.Communicate(texto, voz, rate="+0%", pitch="-2Hz" if "Jorge" in voz else "+0Hz")
+                communicate = edge_tts.Communicate(texto, voz)
                 await communicate.save(output_path)
                 
             temp_dir = tempfile.mkdtemp()
@@ -195,7 +195,7 @@ if st.button("🚀 Generar Reel de 60s"):
                     linea_actual = ""
                     for palabra in palabras:
                         test_linea = linea_actual + palabra + " "
-                        if len(test_linea) > 22: # Líneas más cortas para texto grande y dinámico
+                        if len(test_linea) > 22:
                             lineas.append(linea_actual.strip())
                             linea_actual = palabra + " "
                         else:
@@ -213,7 +213,6 @@ if st.button("🚀 Generar Reel de 60s"):
                         
                         x_centered = (1080 - text_width) // 2
                         
-                        # Simular estilo dinámico: destacar la primera línea en amarillo brillante y las demás en blanco
                         color_texto = "yellow" if linea_idx == 0 else "white"
                         
                         # Sombra gruesa para máximo contraste
@@ -227,11 +226,11 @@ if st.button("🚀 Generar Reel de 60s"):
                     
                     scene_frames.append(np.array(frame_img))
                 
-                scene_clip = ImageSequenceClip(scene_frames, fps=fps).with_duration(duracion_por_escena)
+                scene_clip = ImageSequenceClip(scene_frames, fps=fps).set_duration(duracion_por_escena)
                 clips_video.append(scene_clip)
                 
             video_final = concatenate_videoclips(clips_video, method="compose")
-            video_final = video_final.with_audio(audio_clip)
+            video_final = video_final.set_audio(audio_clip)
             
             # ----------------------------------------------------
             # PASO 4: Renderizar MP4 final (1080x1920)
