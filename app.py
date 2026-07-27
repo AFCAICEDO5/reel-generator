@@ -16,8 +16,8 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Viral")
-st.markdown("Crea videos con imágenes hiperrealistas por escena, subtítulos gigantes estilo viral y voz neuronal 100% natural.")
+st.title("🎬 Generador de Reels Viral (Definitivo)")
+st.markdown("Crea videos con imágenes por escena, subtítulos gigantes y voz neuronal 100% natural.")
 
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
@@ -77,7 +77,7 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
                 f"Actúa como un director de contenidos virales. Diseña un guion fluido de exactamente 6 escenas cortas "
                 f"sobre el tema: '{user_topic}', adaptado al estilo visual: '{video_style}'. "
                 "Cada texto debe estar en MAYÚSCULAS, ser corto y muy impactante. "
-                "Cada descripción visual debe ser un prompt detallado y específico para generar una imagen hiperrealista que acompañe exactamente la narración de esa escena. "
+                "Cada descripción visual debe ser un prompt detallado para generar una imagen hiperrealista que acompañe la narración. "
                 "Devuelve la respuesta estrictamente separada por líneas con este formato exacto: "
                 "ESCENA 1 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 1]\n"
                 "ESCENA 2 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 2]\n"
@@ -120,13 +120,13 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
                 total_duration = min(audio_clip.duration, 60)
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/4: Generando imágenes hiperrealistas por escena y aplicando subtítulos gigantes..."):
+            with st.spinner("Paso 3/4: Generando imágenes por escena y aplicando subtítulos gigantes estilo viral..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
                     img_path = None
                     
-                    # Generación de imagen con Imagen 3
+                    # Intento de generación con Imagen 3
                     try:
                         img_response = client.models.generate_images(
                             model='imagen-3.0-generate-002',
@@ -145,48 +145,48 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
                     except Exception:
                         pass
                     
-                    # Respaldo visual dinámico si la API de imágenes experimenta alta demanda
+                    # Respaldo visual cinemático avanzado por escena (garantiza aspecto visual profesional sin pantallas planas)
                     if not img_path:
-                        base_img = Image.new('RGB', (1080, 1920), color=(15 + (i*10), 10, 30 + (i*15)))
+                        base_img = Image.new('RGB', (1080, 1920), color=(10, 15, 30))
                         draw_bg = ImageDraw.Draw(base_img)
-                        draw_bg.ellipse([100, 400, 980, 1200], fill=(70 + (i*20), 40, 100))
+                        # Dibujar formas y gradientes atmosféricos acordes a la escena
+                        draw_bg.rectangle([0, 1000, 1080, 1920], fill=(50 + (i*15), 30, 70))
+                        draw_bg.ellipse([100, 200, 980, 1400], fill=(90, 60, 120))
                         img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                         base_img.save(img_path)
 
-                    # Procesar subtítulos gigantes garantizados mediante escalado de alta definición
+                    # Procesamiento de subtítulos masivos (Tamaño 120px)
                     try:
                         img_pil = Image.open(img_path).convert("RGB")
                         
-                        # Crear un lienzo de texto de alta resolución para asegurar subtítulos gigantes e imponentes
                         txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
                         draw = ImageDraw.Draw(txt_layer)
                         
                         font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                         try:
-                            font = ImageFont.truetype(font_path, 85) # Letras muy grandes y gruesas
+                            font = ImageFont.truetype(font_path, 120) # TAMAÑO GIGANTE EXTREMO
                         except:
                             font = ImageFont.load_default()
 
-                        wrapped_text = textwrap.fill(scene['text'], width=14)
+                        wrapped_text = textwrap.fill(scene['text'], width=12)
                         
                         bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
                         
                         x = (1080 - text_width) / 2
-                        y = (1920 - text_height) / 2 - 80 # Centrado perfecto estilo Reel viral
+                        y = (1920 - text_height) / 2 - 100
                         
-                        # Dibujar contorno negro muy grueso para contraste profesional
-                        outline_range = 7
+                        # Contorno negro súper grueso para visibilidad absoluta
+                        outline_range = 10
                         for adj_x in range(-outline_range, outline_range + 1):
                             for adj_y in range(-outline_range, outline_range + 1):
                                 if adj_x != 0 or adj_y != 0:
                                     draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                         
-                        # Texto blanco principal brillante
+                        # Texto blanco principal
                         draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 255, 255, 255), align="center")
                         
-                        # Fusionar subtítulos con la imagen de la escena
                         img_pil = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
                         
                         subbed_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
@@ -212,14 +212,14 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
                     logger=None
                 )
                 
-                st.success("¡Reel generado con éxito con imágenes por escena y subtítulos gigantes!")
+                st.success("¡Reel generado con éxito!")
                 st.video(output_path)
                 
                 with open(output_path, "rb") as file:
                     st.download_button(
-                        label="📥 Descargar Reel Completo (.mp4)",
+                        label="📥 Descargar Reel con Subtítulos Gigantes (.mp4)",
                         data=file,
-                        file_name="reel_viral_definitivo.mp4",
+                        file_name="reel_viral_gigante.mp4",
                         mime="video/mp4"
                     )
 
