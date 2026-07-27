@@ -1,9 +1,7 @@
 import streamlit as st
-import os
 import tempfile
 import asyncio
 import edge_tts
-from google import genai
 from moviepy import (
     AudioFileClip, ImageClip, concatenate_videoclips
 )
@@ -17,15 +15,7 @@ st.set_page_config(
 )
 
 st.title("🎬 Generador de Reels Completos (60 Segundos)")
-st.markdown("Genera guiones largos, voz neuronal fluida, transiciones por escena y subtítulos gigantes estilo TikTok.")
-
-api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
-
-if not api_key:
-    st.error("⚠️ No se encontró la `GEMINI_API_KEY` en los Secrets de Streamlit.")
-    st.stop()
-
-client = genai.Client(api_key=api_key)
+st.markdown("Genera tu locución fluida de 60s, transiciones por escena y subtítulos gigantes estilo TikTok sin límites de API.")
 
 async def generate_neural_voice(text, voice_name, output_path):
     communicate = edge_tts.Communicate(text, voice_name)
@@ -70,60 +60,34 @@ voice_mapping = {
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
 if st.button("🚀 Generar Reel Completo (60s)"):
-    # 1. Generación de Guion Extendido para 60 segundos
-    with st.spinner("Paso 1/4: Redactando guion completo de 60 segundos con IA..."):
-        try:
-            prompt = (
-                f"Escribe un guion dinámico, atrapante y profundo para un video Reel de Instagram de exactamente 6 escenas, "
-                f"enfocado en el siguiente tema: '{user_topic}'. "
-                "Cada escena debe tener una frase corta, contundente y en MAYÚSCULAS pensada para mantener a la gente viendo. "
-                "Devuelve la respuesta estrictamente con este formato por línea, sin texto adicional: "
-                "ESCENA 1 | [FRASE CORTA EN MAYÚSCULAS]\n"
-                "ESCENA 2 | [FRASE CORTA EN MAYÚSCULAS]\n"
-                "ESCENA 3 | [FRASE CORTA EN MAYÚSCULAS]\n"
-                "ESCENA 4 | [FRASE CORTA EN MAYÚSCULAS]\n"
-                "ESCENA 5 | [FRASE CORTA EN MAYÚSCULAS]\n"
-                "ESCENA 6 | [FRASE CORTA EN MAYÚSCULAS]"
-            )
-            
-            # Usamos gemini-2.0-flash o gemini-1.5-flash segun disponibilidad de tu API
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt
-            )
-            raw_output = response.text.strip()
-            
+    # 1. Estructurar guion de forma local dividiendo el texto ingresado o complementándolo para alcanzar los 60s
+    with st.spinner("Paso 1/4: Preparando estructura de escenas para 60 segundos..."):
+        base_phrases = [
+            user_topic.upper(),
+            "EL SECRETO ESTÁ EN NO RENDIRSE NUNCA",
+            "CADA DÍA ES UNA NUEVA OPORTUNIDAD",
+            "DESCUBRE LO QUE ERES CAPAZ DE LOGRAR",
+            "EL FUTURO PERTENECE A QUIENES CREEN",
+            "HAZ QUE CADA SEGUNDO CUENTE"
+        ]
+        
+        # Si el usuario escribió un texto largo, lo fragmentamos dinámicamente en 6 escenas
+        words = user_topic.split()
+        if len(words) > 5:
+            chunk_size = max(1, len(words) // 6)
             scenes_data = []
-            for line in raw_output.split("\n"):
-                if "|" in line:
-                    parts = line.split("|")
-                    if len(parts) >= 2:
-                        text_part = parts[1].strip().upper()
-                        scenes_data.append(text_part)
-            
-            if len(scenes_data) < 3:
-                scenes_data = [
-                    user_topic.upper(),
-                    "EL SECRETO ESTÁ EN NO RENDIRSE NUNCA",
-                    "CADA DÍA ES UNA NUEVA OPORTUNIDAD",
-                    "DESCUBRE LO QUE ERES CAPAZ DE LOGRAR",
-                    "EL FUTURO PERTENECE A QUIENES CREEN",
-                    "HAZ QUE CADA SEGUNDO CUENTE"
-                ]
+            for i in range(0, len(words), chunk_size):
+                part = " ".join(words[i:i+chunk_size])
+                if part:
+                    scenes_data.append(part.upper())
+            while len(scenes_data) < 6:
+                scenes_data.append(base_phrases[len(scenes_data) % len(base_phrases)])
+            scenes_data = scenes_data[:6]
+        else:
+            scenes_data = base_phrases
 
-        except Exception as e:
-            st.warning(f"Aviso de IA (usando respaldo automático de guion): {e}")
-            scenes_data = [
-                user_topic.upper(),
-                "EL SECRETO ESTÁ EN NO RENDIRSE NUNCA",
-                "CADA DÍA ES UNA NUEVA OPORTUNIDAD",
-                "DESCUBRE LO QUE ERES CAPAZ DE LOGRAR",
-                "EL FUTURO PERTENECE A QUIENES CREEN",
-                "HAZ QUE CADA SEGUNDO CUENTE"
-            ]
-
-        full_narration = " ".join(scenes_data)
-        st.success(f"¡Guion estructurado con {len(scenes_data)} escenas clave!")
+        full_narration = ". ".join(scenes_data)
+        st.success(f"¡Guion estructurado con {len(scenes_data)} escenas clave de forma local!")
 
     # 2. Síntesis de Voz de Larga Duración
     with st.spinner("Paso 2/4: Sintetizando locución completa (aprox. 60s)..."):
@@ -131,7 +95,6 @@ if st.button("🚀 Generar Reel Completo (60s)"):
         asyncio.run(generate_neural_voice(full_narration, selected_voice_id, audio_path))
         
         audio_clip = AudioFileClip(audio_path)
-        # Adaptar la duración total (máximo 60s o lo que dure la locución natural)
         total_duration = min(audio_clip.duration, 60.0)
         scene_duration = total_duration / len(scenes_data)
 
@@ -166,7 +129,6 @@ if st.button("🚀 Generar Reel Completo (60s)"):
                 
                 font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                 try:
-                    # Fuente muy grande y llamativa (130px)
                     font = ImageFont.truetype(font_path, 130)
                 except:
                     font = ImageFont.load_default()
@@ -215,7 +177,7 @@ if st.button("🚀 Generar Reel Completo (60s)"):
             logger=None
         )
         
-        st.success("¡Reel completo generado con éxito!")
+        st.success("¡Reel completo generado con éxito sin restricciones de API!")
         st.video(output_path)
         
         with open(output_path, "rb") as file:
