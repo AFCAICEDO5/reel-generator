@@ -1,5 +1,5 @@
 streamlit
-google-genai
+openai
 edge-tts
 moviepy
-pillow
+Pillow
