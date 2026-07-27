@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 st.set_page_config(
-    page_title="Generador de Reels con Imágenes Hiperrealistas",
+    page_title="Generador de Reels Hiperrealistas",
     page_icon="🎬",
     layout="centered"
 )
@@ -86,8 +86,9 @@ if st.button("🚀 Generar Reel Fotorrealista (60s)"):
                 "ESCENA 6 | [TEXTO EN MAYÚSCULAS] | [Detailed 8k hyperrealistic photographic prompt for scene 6]"
             )
             
+            # Modelo actualizado y estable
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-1.5-flash",
                 contents=prompt
             )
             raw_output = response.text.strip()
@@ -142,12 +143,10 @@ if st.button("🚀 Generar Reel Fotorrealista (60s)"):
                             with open(img_path, "wb") as f:
                                 f.write(image_bytes)
                     except Exception as img_err:
-                        # Si la API de imágenes devuelve error de cuota/permiso, se muestra en consola interna y se genera una base visual texturizada de alta definición
                         print(f"Aviso de API Imagen: {img_err}")
                         pass
                     
                     if not img_path:
-                        # Respaldo fotográfico texturizado si la cuenta gratuita de API de imágenes está limitada
                         base_img = Image.new('RGB', (1080, 1920), color=(15, 12, 20))
                         draw_bg = ImageDraw.Draw(base_img)
                         for y_coord in range(1920):
