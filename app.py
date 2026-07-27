@@ -3,6 +3,7 @@ import os
 import tempfile
 import asyncio
 import edge_tts
+from google import genai
 from moviepy import (
     AudioFileClip, ImageClip, concatenate_videoclips
 )
@@ -10,13 +11,21 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 st.set_page_config(
-    page_title="Generador de Reels Local",
+    page_title="Generador de Reels de 60s",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels (Sin Límites de API)")
-st.markdown("Genera tus videos con voz neuronal y fondos profesionales generados localmente.")
+st.title("🎬 Generador de Reels Completos (60 Segundos)")
+st.markdown("Genera guiones largos, voz neuronal fluida, transiciones por escena y subtítulos gigantes estilo TikTok.")
+
+api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
+
+if not api_key:
+    st.error("⚠️ No se encontró la `GEMINI_API_KEY` en los Secrets de Streamlit.")
+    st.stop()
+
+client = genai.Client(api_key=api_key)
 
 async def generate_neural_voice(text, voice_name, output_path):
     communicate = edge_tts.Communicate(text, voice_name)
@@ -26,16 +35,16 @@ st.sidebar.header("🛠️ Configuración del Reel")
 
 user_topic = st.sidebar.text_input(
     "1. Tema o idea principal del Reel:", 
-    value="Espíritu, ¿sabes qué hay más allá de la vida?"
+    value="¿Qué pasa en tu mente cuando estás a punto de lograr tus sueños?"
 )
 
 video_style = st.sidebar.selectbox(
-    "2. Estilo Visual:",
+    "2. Estilo Visual de Fondos:",
     [
         "Cinemático / Oscuro Elegante",
         "Estilo Misterio / Neón",
         "Temática Espiritual / Galaxia",
-        "Finanzas / Minimalista Oscuro"
+        "Finanzas / Lujo Oscuro"
     ]
 )
 
@@ -60,52 +69,89 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
-if st.button("🚀 Generar Reel Local (60s)"):
-    with st.spinner("Paso 1/3: Creando estructura de escenas dinámicas..."):
-        # Dividimos el texto ingresado en 4 partes lógicas para armar el video localmente sin consumir IA
-        words = user_topic.split()
-        chunk_size = max(1, len(words) // 4)
-        scenes_text = []
-        
-        for i in range(0, len(words), chunk_size):
-            part = " ".join(words[i:i+chunk_size])
-            if part:
-                scenes_text.append(part.upper())
-        
-        if len(scenes_text) == 0:
-            scenes_text = [user_topic.upper()]
-        
-        # Aseguramos al menos 4 escenas para una buena duración
-        while len(scenes_text) < 4:
-            scenes_text.append(user_topic.upper())
+if st.button("🚀 Generar Reel Completo (60s)"):
+    # 1. Generación de Guion Extendido para 60 segundos
+    with st.spinner("Paso 1/4: Redactando guion completo de 60 segundos con IA..."):
+        try:
+            prompt = (
+                f"Escribe un guion dinámico, atrapante y profundo para un video Reel de Instagram de exactamente 6 escenas, "
+                f"enfocado en el siguiente tema: '{user_topic}'. "
+                "Cada escena debe tener una frase corta, contundente y en MAYÚSCULAS pensada para mantener a la gente viendo. "
+                "Devuelve la respuesta estrictamente con este formato por línea, sin texto adicional: "
+                "ESCENA 1 | [FRASE CORTA EN MAYÚSCULAS]\n"
+                "ESCENA 2 | [FRASE CORTA EN MAYÚSCULAS]\n"
+                "ESCENA 3 | [FRASE CORTA EN MAYÚSCULAS]\n"
+                "ESCENA 4 | [FRASE CORTA EN MAYÚSCULAS]\n"
+                "ESCENA 5 | [FRASE CORTA EN MAYÚSCULAS]\n"
+                "ESCENA 6 | [FRASE CORTA EN MAYÚSCULAS]"
+            )
+            
+            # Usamos gemini-2.0-flash o gemini-1.5-flash segun disponibilidad de tu API
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt
+            )
+            raw_output = response.text.strip()
+            
+            scenes_data = []
+            for line in raw_output.split("\n"):
+                if "|" in line:
+                    parts = line.split("|")
+                    if len(parts) >= 2:
+                        text_part = parts[1].strip().upper()
+                        scenes_data.append(text_part)
+            
+            if len(scenes_data) < 3:
+                scenes_data = [
+                    user_topic.upper(),
+                    "EL SECRETO ESTÁ EN NO RENDIRSE NUNCA",
+                    "CADA DÍA ES UNA NUEVA OPORTUNIDAD",
+                    "DESCUBRE LO QUE ERES CAPAZ DE LOGRAR",
+                    "EL FUTURO PERTENECE A QUIENES CREEN",
+                    "HAZ QUE CADA SEGUNDO CUENTE"
+                ]
 
-        full_narration = " ".join(scenes_text)
+        except Exception as e:
+            st.warning(f"Aviso de IA (usando respaldo automático de guion): {e}")
+            scenes_data = [
+                user_topic.upper(),
+                "EL SECRETO ESTÁ EN NO RENDIRSE NUNCA",
+                "CADA DÍA ES UNA NUEVA OPORTUNIDAD",
+                "DESCUBRE LO QUE ERES CAPAZ DE LOGRAR",
+                "EL FUTURO PERTENECE A QUIENES CREEN",
+                "HAZ QUE CADA SEGUNDO CUENTE"
+            ]
 
-    with st.spinner("Paso 2/3: Sintetizando locución con Voz Neuronal..."):
+        full_narration = " ".join(scenes_data)
+        st.success(f"¡Guion estructurado con {len(scenes_data)} escenas clave!")
+
+    # 2. Síntesis de Voz de Larga Duración
+    with st.spinner("Paso 2/4: Sintetizando locución completa (aprox. 60s)..."):
         audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
         asyncio.run(generate_neural_voice(full_narration, selected_voice_id, audio_path))
         
         audio_clip = AudioFileClip(audio_path)
-        total_duration = min(audio_clip.duration, 60)
-        scene_duration = total_duration / len(scenes_text)
+        # Adaptar la duración total (máximo 60s o lo que dure la locución natural)
+        total_duration = min(audio_clip.duration, 60.0)
+        scene_duration = total_duration / len(scenes_data)
 
-    with st.spinner("Paso 3/3: Renderizando fondos y subtítulos dinámicos..."):
+    # 3. Renderizado de Escenas con Fondos y Subtítulos Gigantes
+    with st.spinner("Paso 3/4: Generando escenas dinámicas y subtítulos gigantes estilo Reel..."):
         clip_list = []
         
-        # Paletas de colores según el estilo seleccionado
         palette_map = {
-            "Cinemático / Oscuro Elegante": ((15, 15, 20), (40, 40, 55)),
-            "Estilo Misterio / Neón": ((10, 5, 20), (50, 10, 40)),
-            "Temática Espiritual / Galaxia": ((5, 10, 25), (20, 40, 70)),
-            "Finanzas / Minimalista Oscuro": ((10, 15, 10), (25, 50, 30))
+            "Cinemático / Oscuro Elegante": ((10, 10, 15), (35, 35, 50)),
+            "Estilo Misterio / Neón": ((15, 5, 25), (45, 10, 35)),
+            "Temática Espiritual / Galaxia": ((5, 10, 30), (15, 30, 60)),
+            "Finanzas / Lujo Oscuro": ((10, 15, 10), (20, 45, 25))
         }
-        color_top, color_bottom = palette_map.get(video_style, ((15, 15, 20), (40, 40, 55)))
+        color_top, color_bottom = palette_map.get(video_style, ((10, 10, 15), (35, 35, 50)))
 
-        for i, text_content in enumerate(scenes_text):
-            # Generación de fondo degradado profesional local
+        for text_content in scenes_data:
             base_img = Image.new('RGB', (1080, 1920))
             draw_bg = ImageDraw.Draw(base_img)
             
+            # Dibujar degradado vertical profesional
             for y_coord in range(1920):
                 factor = y_coord / 1920
                 r = int(color_top[0] * (1 - factor) + color_bottom[0] * factor)
@@ -113,33 +159,35 @@ if st.button("🚀 Generar Reel Local (60s)"):
                 b = int(color_top[2] * (1 - factor) + color_bottom[2] * factor)
                 draw_bg.line([(0, y_coord), (1080, y_coord)], fill=(r, g, b))
 
-            # Aplicar subtítulos gigantescos y centrados
+            # Añadir subtítulos gigantes centrados con borde negro fuerte
             try:
                 txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
                 draw = ImageDraw.Draw(txt_layer)
                 
                 font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                 try:
-                    font = ImageFont.truetype(font_path, 120)
+                    # Fuente muy grande y llamativa (130px)
+                    font = ImageFont.truetype(font_path, 130)
                 except:
                     font = ImageFont.load_default()
 
-                wrapped_text = textwrap.fill(text_content, width=12)
+                wrapped_text = textwrap.fill(text_content, width=10)
                 
                 bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
                 text_width = bbox[2] - bbox[0]
                 text_height = bbox[3] - bbox[1]
                 
                 x = (1080 - text_width) / 2
-                y = (1920 - text_height) / 2 - 100
+                y = (1920 - text_height) / 2 - 120
                 
-                # Sombra gruesa para legibilidad total
-                outline_range = 10
+                # Contorno grueso alrededor del texto para máxima visibilidad
+                outline_range = 12
                 for adj_x in range(-outline_range, outline_range + 1):
                     for adj_y in range(-outline_range, outline_range + 1):
                         if adj_x != 0 or adj_y != 0:
                             draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                 
+                # Texto principal en blanco brillante
                 draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 255, 255, 255), align="center")
                 
                 final_scene_img = Image.alpha_composite(base_img.convert("RGBA"), txt_layer).convert("RGB")
@@ -155,6 +203,8 @@ if st.button("🚀 Generar Reel Local (60s)"):
         final_visual = concatenate_videoclips(clip_list)
         final_video = final_visual.with_audio(audio_clip)
 
+    # 4. Renderizado Final del Video
+    with st.spinner("Paso 4/4: Renderizando archivo de video final en alta definición..."):
         output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
         final_video.write_videofile(
             output_path,
@@ -165,13 +215,13 @@ if st.button("🚀 Generar Reel Local (60s)"):
             logger=None
         )
         
-        st.success("¡Reel generado con éxito sin restricciones de cuota!")
+        st.success("¡Reel completo generado con éxito!")
         st.video(output_path)
         
         with open(output_path, "rb") as file:
             st.download_button(
-                label="📥 Descargar Reel (.mp4)",
+                label="📥 Descargar Reel Completo (.mp4)",
                 data=file,
-                file_name="reel_local.mp4",
+                file_name="reel_60s_completo.mp4",
                 mime="video/mp4"
             )
