@@ -11,13 +11,13 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 st.set_page_config(
-    page_title="Generador de Reels con Voz Neuronal",
+    page_title="Generador de Reels Viral (Imágenes y Subtítulos Gigantes)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels con Voz Neuronal Natural")
-st.markdown("Crea videos con locución 100% humana, imágenes garantizadas por escena y subtítulos gigantes estilo viral.")
+st.title("🎬 Generador de Reels Viral")
+st.markdown("Crea videos con imágenes hiperrealistas por escena, subtítulos gigantes estilo viral y voz neuronal 100% natural.")
 
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
@@ -27,16 +27,10 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# -------------------------------------------------------------
-# FUNCION ASÍNCRONA PARA VOZ NEURONAL ULTRA-NATURAL
-# -------------------------------------------------------------
 async def generate_neural_voice(text, voice_name, output_path):
     communicate = edge_tts.Communicate(text, voice_name)
     await communicate.save(output_path)
 
-# -------------------------------------------------------------
-# CONTROLES INTERACTIVOS EN LA BARRA LATERAL
-# -------------------------------------------------------------
 st.sidebar.header("🛠️ Configuración del Reel")
 
 user_topic = st.sidebar.text_input(
@@ -66,7 +60,6 @@ voice_option = st.sidebar.selectbox(
     ]
 )
 
-# Mapeo de voces neuronales de alta calidad
 voice_mapping = {
     "México - Dalia (Femenina Natural y Fluida)": "es-MX-DaliaNeural",
     "México - Jorge (Masculina Profunda y Clara)": "es-MX-JorgeNeural",
@@ -77,20 +70,21 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
-if st.button("🚀 Generar Reel con Voz Neuronal y Subtítulos Gigantes (60s)"):
-    with st.spinner("Paso 1/4: Generando guion estructurado de 6 escenas..."):
+if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
+    with st.spinner("Paso 1/4: Generando guion estructurado de 6 escenas con Gemini..."):
         try:
             prompt = (
-                f"Actúa como un creador de contenido viral. Diseña un guion fluido de exactamente 6 escenas cortas "
+                f"Actúa como un director de contenidos virales. Diseña un guion fluido de exactamente 6 escenas cortas "
                 f"sobre el tema: '{user_topic}', adaptado al estilo visual: '{video_style}'. "
-                "Cada texto debe estar redactado en MAYÚSCULAS y ser muy impactante. "
+                "Cada texto debe estar en MAYÚSCULAS, ser corto y muy impactante. "
+                "Cada descripción visual debe ser un prompt detallado y específico para generar una imagen hiperrealista que acompañe exactamente la narración de esa escena. "
                 "Devuelve la respuesta estrictamente separada por líneas con este formato exacto: "
-                "ESCENA 1 | [TEXTO EN MAYÚSCULAS PARA LA VOZ Y PANTALLA] | [Prompt visual hiperrealista detallado 8K para escena 1]\n"
-                "ESCENA 2 | [TEXTO EN MAYÚSCULAS PARA LA VOZ Y PANTALLA] | [Prompt visual hiperrealista detallado 8K para escena 2]\n"
-                "ESCENA 3 | [TEXTO EN MAYÚSCULAS PARA LA VOZ Y PANTALLA] | [Prompt visual hiperrealista detallado 8K para escena 3]\n"
-                "ESCENA 4 | [TEXTO EN MAYÚSCULAS PARA LA VOZ Y PANTALLA] | [Prompt visual hiperrealista detallado 8K para escena 4]\n"
-                "ESCENA 5 | [TEXTO EN MAYÚSCULAS PARA LA VOZ Y PANTALLA] | [Prompt visual hiperrealista detallado 8K para escena 5]\n"
-                "ESCENA 6 | [TEXTO EN MAYÚSCULAS PARA LA VOZ Y PANTALLA] | [Prompt visual hiperrealista detallado 8K para escena 6]"
+                "ESCENA 1 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 1]\n"
+                "ESCENA 2 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 2]\n"
+                "ESCENA 3 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 3]\n"
+                "ESCENA 4 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 4]\n"
+                "ESCENA 5 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 5]\n"
+                "ESCENA 6 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 6]"
             )
             
             response = client.models.generate_content(
@@ -99,12 +93,11 @@ if st.button("🚀 Generar Reel con Voz Neuronal y Subtítulos Gigantes (60s)"):
             )
             raw_output = response.text.strip()
             
-            st.success("¡Estructura de guion generada con éxito!")
+            st.success("¡Guion y prompts visuales generados con éxito!")
             st.text_area("Desglose del Guion:", raw_output, height=140)
 
             scenes_data = []
             lines = raw_output.split("\n")
-            full_narration = ""
             
             for line in lines:
                 if "|" in line:
@@ -112,14 +105,14 @@ if st.button("🚀 Generar Reel con Voz Neuronal y Subtítulos Gigantes (60s)"):
                     if len(parts) >= 3:
                         text_part = parts[1].strip().upper()
                         visual_part = parts[2].strip()
-                        full_narration += " " + text_part
                         scenes_data.append({"text": text_part, "visual": visual_part})
             
             if not scenes_data:
-                full_narration = user_topic.upper()
-                scenes_data = [{"text": user_topic.upper(), "visual": f"Hyperrealistic 8k cinematic shot of {user_topic}, highly detailed"}]
+                scenes_data = [{"text": user_topic.upper(), "visual": f"Hyperrealistic 8k cinematic shot of {user_topic}"}]
 
-            with st.spinner("Paso 2/4: Sintetizando locución con Voz Neuronal 100% Humana..."):
+            full_narration = " ".join([s["text"] for s in scenes_data])
+
+            with st.spinner("Paso 2/4: Sintetizando locución con Voz Neuronal..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
                 asyncio.run(generate_neural_voice(full_narration.strip(), selected_voice_id, audio_path))
                 
@@ -127,13 +120,13 @@ if st.button("🚀 Generar Reel con Voz Neuronal y Subtítulos Gigantes (60s)"):
                 total_duration = min(audio_clip.duration, 60)
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/4: Generando imágenes y aplicando subtítulos gigantes estilo viral..."):
+            with st.spinner("Paso 3/4: Generando imágenes hiperrealistas por escena y aplicando subtítulos gigantes..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
                     img_path = None
                     
-                    # Generación mediante Imagen 3 API
+                    # Generación de imagen con Imagen 3
                     try:
                         img_response = client.models.generate_images(
                             model='imagen-3.0-generate-002',
@@ -152,47 +145,49 @@ if st.button("🚀 Generar Reel con Voz Neuronal y Subtítulos Gigantes (60s)"):
                     except Exception:
                         pass
                     
-                    # Respaldo visual ilustrado avanzado (habitación con haz de luz)
+                    # Respaldo visual dinámico si la API de imágenes experimenta alta demanda
                     if not img_path:
-                        base_img = Image.new('RGB', (1080, 1920), color=(15, 10, 25))
+                        base_img = Image.new('RGB', (1080, 1920), color=(15 + (i*10), 10, 30 + (i*15)))
                         draw_bg = ImageDraw.Draw(base_img)
-                        draw_bg.rectangle([0, 1200, 1080, 1920], fill=(90, 55, 30))
-                        draw_bg.rectangle([0, 0, 1080, 1200], fill=(30, 20, 15))
-                        draw_bg.polygon([(400, 1200), (680, 1200), (900, 1920), (180, 1920)], fill=(150, 110, 60))
+                        draw_bg.ellipse([100, 400, 980, 1200], fill=(70 + (i*20), 40, 100))
                         img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                         base_img.save(img_path)
 
-                    # Procesar imagen y quemar subtítulos gigantes garantizados
+                    # Procesar subtítulos gigantes garantizados mediante escalado de alta definición
                     try:
                         img_pil = Image.open(img_path).convert("RGB")
                         
+                        # Crear un lienzo de texto de alta resolución para asegurar subtítulos gigantes e imponentes
+                        txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
+                        draw = ImageDraw.Draw(txt_layer)
+                        
                         font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                         try:
-                            font = ImageFont.truetype(font_path, 95)
+                            font = ImageFont.truetype(font_path, 85) # Letras muy grandes y gruesas
                         except:
                             font = ImageFont.load_default()
 
-                        scene_text = scene['text']
-                        wrapped_text = textwrap.fill(scene_text, width=14)
+                        wrapped_text = textwrap.fill(scene['text'], width=14)
                         
-                        draw_temp = ImageDraw.Draw(img_pil)
-                        bbox = draw_temp.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
+                        bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
                         
                         x = (1080 - text_width) / 2
-                        y = (1920 - text_height) / 2 - 100
+                        y = (1920 - text_height) / 2 - 80 # Centrado perfecto estilo Reel viral
                         
-                        draw = ImageDraw.Draw(img_pil)
-                        
-                        # Contorno negro súper grueso alrededor del texto blanco
-                        outline_range = 8
+                        # Dibujar contorno negro muy grueso para contraste profesional
+                        outline_range = 7
                         for adj_x in range(-outline_range, outline_range + 1):
                             for adj_y in range(-outline_range, outline_range + 1):
                                 if adj_x != 0 or adj_y != 0:
-                                    draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill="black", align="center")
+                                    draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                         
-                        draw.multiline_text((x, y), wrapped_text, font=font, fill="white", align="center")
+                        # Texto blanco principal brillante
+                        draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 255, 255, 255), align="center")
+                        
+                        # Fusionar subtítulos con la imagen de la escena
+                        img_pil = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
                         
                         subbed_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                         img_pil.save(subbed_img_path)
@@ -217,14 +212,14 @@ if st.button("🚀 Generar Reel con Voz Neuronal y Subtítulos Gigantes (60s)"):
                     logger=None
                 )
                 
-                st.success("¡Reel generado con éxito con voz neuronal y subtítulos gigantes!")
+                st.success("¡Reel generado con éxito con imágenes por escena y subtítulos gigantes!")
                 st.video(output_path)
                 
                 with open(output_path, "rb") as file:
                     st.download_button(
-                        label="📥 Descargar Reel con Voz Neuronal (.mp4)",
+                        label="📥 Descargar Reel Completo (.mp4)",
                         data=file,
-                        file_name="reel_voz_neuronal.mp4",
+                        file_name="reel_viral_definitivo.mp4",
                         mime="video/mp4"
                     )
 
