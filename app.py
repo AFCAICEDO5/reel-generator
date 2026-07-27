@@ -3,6 +3,7 @@ import os
 import tempfile
 import asyncio
 import edge_tts
+from google import genai
 from openai import OpenAI
 from moviepy import (
     AudioFileClip, ImageClip, concatenate_videoclips
@@ -11,15 +12,16 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 st.set_page_config(
-    page_title="Automatizador Total de Reels con OpenAI",
-    page_icon="🤖",
+    page_title="Automatizador de Reels (Los 3 Caminos)",
+    page_icon="⚡",
     layout="centered"
 )
 
-st.title("🤖 Automatizador Total de Reels Pro (OpenAI + Voz + Video)")
-st.markdown("Escribe tu tema y deja que **OpenAI** cree un guion dinámico y único, acompañado de voz neuronal latina, fondos cinematográficos y subtítulos gigantes.")
+st.title("⚡ Automatizador Total de Reels (Sistema de 3 Caminos)")
+st.markdown("El sistema intentará generar el guion único con **Gemini**. Si hay error de cuota, pasará automáticamente a **OpenAI**. Si ninguna tiene saldo, activará el **Respaldo Local** para que el video siempre se cree.")
 
-# Configuración segura de la API key de OpenAI
+# Credenciales seguras
+gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 openai_api_key = st.secrets.get("OPENAI_API_KEY") if "OPENAI_API_KEY" in st.secrets else os.environ.get("OPENAI_API_KEY")
 
 async def generate_neural_voice(text, voice_name, output_path):
@@ -27,7 +29,7 @@ async def generate_neural_voice(text, voice_name, output_path):
     await communicate.save(output_path)
 
 # --- MENÚ LATERAL ---
-st.sidebar.header("⚙️ Parámetros del Reel Automático")
+st.sidebar.header("⚙️ Configuración del Reel")
 
 user_topic = st.sidebar.text_input(
     "Tema principal o pregunta detonante:", 
@@ -35,7 +37,7 @@ user_topic = st.sidebar.text_input(
 )
 
 video_style = st.sidebar.selectbox(
-    "Estilo Cinematográfico:",
+    "Estilo Visual:",
     [
         "Cinemático / Fotorrealista 8K (Estilo Película Épica)",
         "Terror Cósmico / Misterio Oscuro Hiperrealista",
@@ -65,61 +67,98 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-JorgeNeural")
 
-if st.button("🚀 Generar Reel con OpenAI"):
-    if not openai_api_key:
-        st.error("⚠️ Falta configurar tu `OPENAI_API_KEY` en los Secrets de Streamlit o variables de entorno.")
-        st.stop()
-        
-    client = OpenAI(api_key=openai_api_key)
-    
-    # 1. Generar Guion Único y Dinámico con OpenAI
-    with st.spinner("Paso 1/4: OpenAI está analizando el tema y redactando un guion único (sin plantillas)..."):
-        try:
-            prompt_ia = (
-                f"Actúa como un guionista profesional de contenido viral para TikTok e Instagram Reels. "
-                f"Crea un guion detallado y original de exactamente 6 escenas sobre el tema: '{user_topic}', adaptado al estilo '{video_style}'. "
-                "Para cada escena, proporciona dos cosas separadas estrictamente por el carácter pipe (|): "
-                "1. El texto corto en MAYÚSCULAS para mostrar en pantalla como subtítulo de alto impacto. "
-                "2. La narración completa, fluida y profunda para la voz en off, incluyendo gancho, desarrollo y CTA al final. "
-                "Devuelve el resultado exactamente en este formato por línea, sin texto introductorio ni markdown extra: "
-                "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
-                "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
-                "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
-                "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
-                "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
-                "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]"
-            )
-            
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt_ia}],
-                temperature=0.7
-            )
-            
-            ai_text = response.choices[0].message.content.strip()
-            ai_lines = ai_text.split("\n")
-            
-            screen_texts = []
-            narration_texts = []
-            
-            for line in ai_lines:
-                if "|" in line:
-                    parts = line.split("|")
-                    if len(parts) >= 2:
-                        screen_texts.append(parts[0].strip().replace("[", "").replace("]", ""))
-                        narration_texts.append(parts[1].strip().replace("[", "").replace("]", ""))
-            
-            if len(screen_texts) < 6:
-                # Respaldo automático por seguridad
-                screen_texts = ["EL SECRETO DETRÁS DE ESTE FENÓMENO", "UNA PERSPECTIVA QUE CAMBIA TODO", "EL IMPACTO REAL EN NUESTRA VIDA", "LO QUE LA CIENCIA DESCUBRIÓ RECIENTEMENTE", "UNA CONCLUSIÓN SORPRENDENTE", "COMPÁRTELO Y COMENTA TU OPINIÓN"]
-                narration_texts = [f"Analicemos a fondo {user_topic}.", "La realidad supera lo que imaginamos.", "Cada detalle transforma nuestra perspectiva.", "La investigación revela datos fascinantes.", "Entender esto nos prepara para el futuro.", f"¿Qué opinas sobre {user_topic}? Déjalo en comentarios."]
-                
-        except Exception as e:
-            st.error(f"Error al conectar con OpenAI: {e}. Revisa que tu clave sea correcta.")
-            st.stop()
+if st.button("🚀 Generar Reel (Sistema de 3 Caminos)"):
+    topic_clean = user_topic.strip()
+    screen_texts = []
+    narration_texts = []
+    generation_method = ""
 
-    # 2. Síntesis de la Locución Neuronal
-    with st.spinner("Paso 2/4: Sintetizando la voz en off humana y latina..."):
+    prompt_ia = (
+        f"Actúa como un guionista profesional de contenido viral para TikTok e Instagram Reels. "
+        f"Crea un guion detallado y original de exactamente 6 escenas sobre el tema: '{topic_clean}', adaptado al estilo '{video_style}'. "
+        "Para cada escena, proporciona dos cosas separadas estrictamente por el carácter pipe (|): "
+        "1. El texto corto en MAYÚSCULAS para mostrar en pantalla como subtítulo de alto impacto. "
+        "2. La narración completa, fluida y profunda para la voz en off, incluyendo gancho, desarrollo y CTA al final. "
+        "Devuelve el resultado exactamente en este formato por línea, sin texto introductorio ni markdown extra: "
+        "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
+        "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
+        "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
+        "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
+        "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]\n"
+        "[TEXTO EN MAYÚSCULAS PARA PANTALLA] | [NARRACIÓN LARGA Y PROFUNDA PARA AUDIO]"
+    )
+
+    # --- CAMINO 1: GEMINI ---
+    if gemini_api_key:
+        try:
+            with st.spinner("🔄 Camino 1/3: Intentando conectar con Gemini..."):
+                client_gemini = genai.Client(api_key=gemini_api_key)
+                response = client_gemini.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=prompt_ia
+                )
+                ai_lines = response.text.strip().split("\n")
+                for line in ai_lines:
+                    if "|" in line:
+                        parts = line.split("|")
+                        if len(parts) >= 2:
+                            screen_texts.append(parts[0].strip().replace("[", "").replace("]", ""))
+                            narration_texts.append(parts[1].strip().replace("[", "").replace("]", ""))
+                if len(screen_texts) >= 6:
+                    generation_method = "✨ Guion generado por Gemini"
+        except Exception:
+            pass # Si falla, pasa silenciosamente al Camino 2
+
+    # --- CAMINO 2: OPENAI (Si Gemini falló o no hay clave) ---
+    if len(screen_texts) < 6 and openai_api_key:
+        try:
+            with st.spinner("🔄 Camino 2/3: Gemini ocupado. Intentando conectar con OpenAI..."):
+                client_openai = OpenAI(api_key=openai_api_key)
+                response = client_openai.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt_ia}],
+                    temperature=0.7
+                )
+                ai_text = response.choices[0].message.content.strip()
+                ai_lines = ai_text.split("\n")
+                screen_texts = []
+                narration_texts = []
+                for line in ai_lines:
+                    if "|" in line:
+                        parts = line.split("|")
+                        if len(parts) >= 2:
+                            screen_texts.append(parts[0].strip().replace("[", "").replace("]", ""))
+                            narration_texts.append(parts[1].strip().replace("[", "").replace("]", ""))
+                if len(screen_texts) >= 6:
+                    generation_method = "✨ Guion generado por OpenAI"
+        except Exception:
+            pass # Si falla, pasa al Camino 3
+
+    # --- CAMINO 3: RESPALDO LOCAL INTELIGENTE (Si los dos anteriores fallaron) ---
+    if len(screen_texts) < 6:
+        with st.spinner("🔄 Camino 3/3: Activando Respaldo Local Inteligente..."):
+            generation_method = "🛡️ Guion generado por Motor Local Inteligente"
+            screen_texts = [
+                f"EL IMPACTO REAL DE {topic_clean.upper()}",
+                "UNA REALIDAD QUE POCOS COMPRENDEN",
+                "CADA DETALLE TRANSFORMA NUESTRO ENTORNO",
+                "LO QUE LA CIENCIA DESCUBRIÓ RECIENTEMENTE",
+                "UNA PERSPECTIVA COMPLETAMENTE NUEVA",
+                "COMPÁRTELO Y COMENTA TU OPINIÓN"
+            ]
+            narration_texts = [
+                f"Analicemos a fondo un tema fascinante y complejo: {topic_clean}.",
+                "La realidad supera por completo lo que solemos imaginar en el día a día.",
+                "Cada pequeño detalle que observamos transforma nuestra perspectiva y nuestra forma de ver el mundo.",
+                "La investigación y el análisis detallado revelan datos verdaderamente sorprendentes sobre este fenómeno.",
+                "Comprender esto nos prepara de manera directa para los cambios inevitables del futuro.",
+                f"¿Qué opinas tú sobre {topic_clean}? Déjalo en los comentarios y comparte este video para llegar a más personas."
+            ]
+
+    st.info(f"Método utilizado: **{generation_method}**")
+
+    # 2. Síntesis de la Voz Neuronal
+    with st.spinner("Sintetizando la locución con voz neuronal latina..."):
         full_narration_text = ". ".join(narration_texts)
         audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
         asyncio.run(generate_neural_voice(full_narration_text, selected_voice_id, audio_path))
@@ -128,10 +167,9 @@ if st.button("🚀 Generar Reel con OpenAI"):
         total_duration = min(audio_clip.duration, 60.0)
         scene_duration = total_duration / len(screen_texts)
 
-    # 3. Generación Automática de Fondos Cinematográficos y Subtítulos Gigantes
-    with st.spinner("Paso 3/4: Renderizando fotogramas verticales 9:16 y subtítulos masivos profesionales..."):
+    # 3. Renderizado de video con subtítulos gigantes
+    with st.spinner("Renderizando video en alta definición con subtítulos masivos..."):
         clip_list = []
-        
         palette_map = {
             "Cinemático / Fotorrealista 8K (Estilo Película Épica)": ((10, 15, 30), (40, 20, 60)),
             "Terror Cósmico / Misterio Oscuro Hiperrealista": ((15, 5, 20), (35, 10, 25)),
@@ -192,8 +230,6 @@ if st.button("🚀 Generar Reel con OpenAI"):
         final_visual = concatenate_videoclips(clip_list)
         final_video = final_visual.with_audio(audio_clip)
 
-    # 4. Renderizado Final del Video
-    with st.spinner("Paso 4/4: Compilando archivo de video final en alta definición..."):
         output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
         final_video.write_videofile(
             output_path,
@@ -204,13 +240,13 @@ if st.button("🚀 Generar Reel con OpenAI"):
             logger=None
         )
         
-        st.success("¡Reel 100% Automatizado con OpenAI Generado con Éxito!")
+        st.success("¡Reel generado con éxito absoluto!")
         st.video(output_path)
         
         with open(output_path, "rb") as file:
             st.download_button(
                 label="📥 Descargar Reel Automático (.mp4)",
                 data=file,
-                file_name="reel_openai_automatizado.mp4",
+                file_name="reel_tres_caminos.mp4",
                 mime="video/mp4"
             )
