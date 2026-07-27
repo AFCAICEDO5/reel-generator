@@ -1,9 +1,7 @@
 import streamlit as st
-import os
 import tempfile
 import asyncio
 import edge_tts
-from google import genai
 from moviepy import (
     AudioFileClip, ImageClip, concatenate_videoclips
 )
@@ -16,16 +14,8 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("🎬 Generador Pro Híbrido de Reels (IA + Imágenes Manuales)")
-st.markdown("Genera el guion y los prompts hiperrealistas con Gemini, sube tus imágenes y crea un Reel de 60s perfecto para redes.")
-
-api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
-
-if not api_key:
-    st.error("⚠️ No se encontró la `GEMINI_API_KEY` en los Secrets de Streamlit.")
-    st.stop()
-
-client = genai.Client(api_key=api_key)
+st.title("🎬 Generador Pro Híbrido de Reels (Sin Límites de API)")
+st.markdown("Genera tu guion local, sube tus imágenes hiperrealistas y crea un Reel de 60s perfecto para redes.")
 
 async def generate_neural_voice(text, voice_name, output_path):
     communicate = edge_tts.Communicate(text, voice_name)
@@ -69,42 +59,28 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
-# --- PASO 1: Generar Guion y Prompts con Gemini (Una sola llamada segura) ---
-st.subheader("📌 Paso 1: Generar Guion y Prompts Hiperrealistas con IA")
-if st.button("✨ Generar Guion y Prompts con Gemini"):
-    with st.spinner("Creando estructura y prompts detallados para tus imágenes..."):
-        try:
-            prompt = (
-                f"Actúa como un director de cine experto en videos cortos virales. Crea un guion de exactamente 6 escenas "
-                f"sobre el tema: '{user_topic}', adaptado al estilo: '{video_style}'. "
-                "Para cada escena, escribe un texto corto y contundente en MAYÚSCULAS para los subtítulos, y un prompt detallado en inglés para generar la imagen en 8K fotorrealista. "
-                "Devuelve la respuesta estrictamente con este formato por línea: "
-                "ESCENA 1 | [TEXTO EN MAYÚSCULAS] | [Detailed 8k hyperrealistic photographic prompt for scene 1]\n"
-                "ESCENA 2 | [TEXTO EN MAYÚSCULAS] | [Detailed 8k hyperrealistic photographic prompt for scene 2]\n"
-                "ESCENA 3 | [TEXTO EN MAYÚSCULAS] | [Detailed 8k hyperrealistic photographic prompt for scene 3]\n"
-                "ESCENA 4 | [TEXTO EN MAYÚSCULAS] | [Detailed 8k hyperrealistic photographic prompt for scene 4]\n"
-                "ESCENA 5 | [TEXTO EN MAYÚSCULAS] | [Detailed 8k hyperrealistic photographic prompt for scene 5]\n"
-                "ESCENA 6 | [TEXTO EN MAYÚSCULAS] | [Detailed 8k hyperrealistic photographic prompt for scene 6]"
-            )
-            
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt
-            )
-            st.session_state['ai_output'] = response.text.strip()
-            st.success("¡Guion y prompts generados con éxito! Cópialos abajo para generar tus imágenes en Midjourney, ChatGPT o la herramienta que prefieras.")
-        except Exception as e:
-            st.error(f"Error al generar con Gemini: {e}")
+# --- PASO 1: Generador automático local de Prompts y Guion ---
+st.subheader("📌 Paso 1: Prompts e Ideas de Escenas (Generados Localmente)")
 
-if 'ai_output' in st.session_state:
-    st.text_area("Copia estos prompts para tus imágenes:", st.session_state['ai_output'], height=200)
+# Creamos prompts profesionales listos para copiar a Midjourney o ChatGPT basados en el tema
+base_prompts = [
+    f"ESCENA 1 | {user_topic.upper()} | Cinematic 8k hyperrealistic shot of {user_topic}, dramatic lighting, photorealistic masterpiece",
+    "ESCENA 2 | EL SECRETO QUE NADIE SE ATREVE A CONTAR | Dark mysterious cinematic atmosphere, hyperdetailed raw photo, 8k resolution",
+    "ESCENA 3 | CADA DETALLE CAMBIA NUESTRA REALIDAD | Futuristic hyperdetailed 8k photography, cinematic masterpiece, dramatic shadows",
+    "ESCENA 4 | DESCUBRE LO QUE SE OCULTA TRAS LA VISTA | Epic cosmic background, photorealistic 8k, cinematic lighting",
+    "ESCENA 5 | EL FUTURO PERTENECE A QUIENES INVESTIGAN | High tech hyperrealistic concept art, dramatic 8k resolution, raw photo",
+    "ESCENA 6 | COMPARTE ESTE MENSAJE AHORA MISMO | Stunning hyperrealistic 8k cinematic shot, masterpiece, photorealistic"
+]
+
+generated_prompts_text = "\n".join(base_prompts)
+st.text_area("Copia estos prompts para generar tus 6 imágenes en Midjourney, ChatGPT o Leonardo AI:", generated_prompts_text, height=180)
 
 st.markdown("---")
 
 # --- PASO 2: Carga Manual de Imágenes y Ensamblaje del Video ---
 st.subheader("🖼️ Paso 2: Sube tus 6 Imágenes Hiperrealistas (Formato Vertical 9:16)")
 uploaded_files = st.file_uploader(
-    "Sube exactamente 6 imágenes (para las 6 escenas del guion):", 
+    "Sube exactamente 6 imágenes generadas:", 
     type=["jpg", "jpeg", "png"], 
     accept_multiple_files=True
 )
@@ -113,8 +89,7 @@ if st.button("🚀 Renderizar Reel Completo (60s)"):
     if not uploaded_files or len(uploaded_files) != 6:
         st.warning("⚠️ Por favor sube exactamente 6 imágenes para completar las escenas del video.")
     else:
-        with st.spinner("Paso 1/3: Procesando guion y locución con voz neuronal..."):
-            # Extraer textos base de la salida de IA si existe, o usar predeterminados robustos
+        with st.spinner("Paso 1/2: Procesando guion y locución con voz neuronal..."):
             texts_data = [
                 user_topic.upper(),
                 "EL SECRETO QUE NADIE SE ATREVE A CONTAR",
@@ -123,16 +98,6 @@ if st.button("🚀 Renderizar Reel Completo (60s)"):
                 "EL FUTURO PERTENECE A QUIENES INVESTIGAN",
                 "COMPARTE ESTE MENSAJE AHORA MISMO"
             ]
-            
-            if 'ai_output' in st.session_state:
-                parsed_texts = []
-                for line in st.session_state['ai_output'].split("\n"):
-                    if "|" in line:
-                        parts = line.split("|")
-                        if len(parts) >= 2:
-                            parsed_texts.append(parts[1].strip().upper())
-                if len(parsed_texts) >= 6:
-                    texts_data = parsed_texts[:6]
 
             full_narration = ". ".join(texts_data)
             
@@ -143,19 +108,16 @@ if st.button("🚀 Renderizar Reel Completo (60s)"):
             total_duration = min(audio_clip.duration, 60.0)
             scene_duration = total_duration / len(uploaded_files)
 
-        with st.spinner("Paso 2/3: Adaptando imágenes a 9:16 y aplicando subtítulos gigantes estilo Reel..."):
+        with st.spinner("Paso 2/2: Adaptando imágenes a 9:16 y aplicando subtítulos gigantes estilo Reel..."):
             clip_list = []
             
             for i, uploaded_file in enumerate(uploaded_files):
-                # Guardar imagen subida temporalmente
                 img_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
                 img_temp.write(uploaded_file.read())
                 img_temp.close()
                 
-                # Procesar imagen con Pillow para asegurar tamaño vertical exacto (1080x1920) y subtítulos
                 try:
                     img_pil = Image.open(img_temp.name).convert("RGB")
-                    # Redimensionar y recortar inteligentemente a proporción vertical 9:16
                     img_pil = img_pil.resize((1080, 1920), Image.Resampling.LANCZOS)
                     
                     txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
@@ -177,14 +139,12 @@ if st.button("🚀 Renderizar Reel Completo (60s)"):
                     x = (1080 - text_width) / 2
                     y = (1920 - text_height) / 2 - 120
                     
-                    # Contorno negro grueso para máxima visibilidad en móviles
                     outline_range = 14
                     for adj_x in range(-outline_range, outline_range + 1):
                         for adj_y in range(-outline_range, outline_range + 1):
                             if adj_x != 0 or adj_y != 0:
                                 draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                     
-                    # Texto principal blanco brillante
                     draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 255, 255, 255), align="center")
                     
                     final_scene_img = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
@@ -200,7 +160,6 @@ if st.button("🚀 Renderizar Reel Completo (60s)"):
             final_visual = concatenate_videoclips(clip_list)
             final_video = final_visual.with_audio(audio_clip)
 
-        with st.spinner("Paso 3/3: Renderizando video final en alta definición..."):
             output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
             final_video.write_videofile(
                 output_path,
@@ -211,7 +170,7 @@ if st.button("🚀 Renderizar Reel Completo (60s)"):
                 logger=None
             )
             
-            st.success("¡Reel Híbrido Pro generado con éxito!")
+            st.success("¡Reel Híbrido Pro generado con éxito sin errores de API!")
             st.video(output_path)
             
             with open(output_path, "rb") as file:
