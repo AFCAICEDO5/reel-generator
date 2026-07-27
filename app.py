@@ -86,9 +86,9 @@ if st.button("🚀 Generar Reel Fotorrealista (60s)"):
                 "ESCENA 6 | [TEXTO EN MAYÚSCULAS] | [Detailed 8k hyperrealistic photographic prompt for scene 6]"
             )
             
-            # Modelo actualizado y estable
+            # Modelo actualizado y compatible con la API actual
             response = client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-2.0-flash",
                 contents=prompt
             )
             raw_output = response.text.strip()
