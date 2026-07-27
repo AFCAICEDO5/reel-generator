@@ -21,13 +21,19 @@ async def generate_neural_voice(text, voice_name, output_path):
     communicate = edge_tts.Communicate(text, voice_name)
     await communicate.save(output_path)
 
-st.sidebar.header("🛠️ Configuración de la Voz")
+# --- MENÚ LATERAL RESTAURADO ---
+st.sidebar.header("🛠️ Configuración del Reel")
+
+user_topic = st.sidebar.text_input(
+    "Título o Tema Principal:", 
+    value="EL ORIGEN DE LA BIBLIA: LA HISTORIA DEL LIBRO QUE CAMBIó AL MUNDO"
+)
 
 voice_option = st.sidebar.selectbox(
     "Selecciona la Voz Neuronal (100% Humana y Latina):",
     [
-        "México - Dalia (Femenina Natural y Fluida)",
         "México - Jorge (Masculina Profunda y Clara)",
+        "México - Dalia (Femenina Natural y Fluida)",
         "Colombia - Gonzalo (Masculina Dinámica)",
         "Colombia - Salome (Femenina Cálida)",
         "Argentina - Tomás (Masculina Cercana)"
@@ -35,8 +41,8 @@ voice_option = st.sidebar.selectbox(
 )
 
 voice_mapping = {
-    "México - Dalia (Femenina Natural y Fluida)": "es-MX-DaliaNeural",
     "México - Jorge (Masculina Profunda y Clara)": "es-MX-JorgeNeural",
+    "México - Dalia (Femenina Natural y Fluida)": "es-MX-DaliaNeural",
     "Colombia - Gonzalo (Masculina Dinámica)": "es-CO-GonzaloNeural",
     "Colombia - Salome (Femenina Cálida)": "es-CO-SalomeNeural",
     "Argentina - Tomás (Masculina Cercana)": "es-AR-TomasNeural"
@@ -44,7 +50,7 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-JorgeNeural")
 
-# Definición exacta del guion estructurado de 8 escenas (Narración + Texto en Pantalla)
+# Configuración exacta de las 8 escenas cinemáticas
 scenes_config = [
     {
         "narration": "Hace más de tres mil quinientos años comenzó la historia del libro más leído de toda la humanidad... la Biblia.",
@@ -114,16 +120,13 @@ if st.button("🚀 Renderizar Reel Cinemático Completo (60s)"):
                 
                 try:
                     img_pil = Image.open(img_temp.name).convert("RGB")
-                    # Redimensionar exacto a resolución vertical 9:16 (1080x1920)
                     img_pil = img_pil.resize((1080, 1920), Image.Resampling.LANCZOS)
                     
-                    # Capa transparente para los subtítulos
                     txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
                     draw = ImageDraw.Draw(txt_layer)
                     
                     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                     try:
-                        # Fuente de 120px para garantizar impacto visual masivo
                         font = ImageFont.truetype(font_path, 120)
                     except:
                         font = ImageFont.load_default()
@@ -136,16 +139,14 @@ if st.button("🚀 Renderizar Reel Cinemático Completo (60s)"):
                     text_height = bbox[3] - bbox[1]
                     
                     x = (1080 - text_width) / 2
-                    y = (1920 - text_height) / 2 + 300  # Posicionado en el tercio inferior para máxima legibilidad
+                    y = (1920 - text_height) / 2 + 300
                     
-                    # Contorno negro grueso (crea el efecto profesional de subtítulos virales)
                     outline_range = 12
                     for adj_x in range(-outline_range, outline_range + 1):
                         for adj_y in range(-outline_range, outline_range + 1):
                             if adj_x != 0 or adj_y != 0:
                                 draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                     
-                    # Texto principal en blanco puro
                     draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 255, 255, 255), align="center")
                     
                     final_scene_img = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
