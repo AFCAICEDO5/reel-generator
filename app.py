@@ -179,27 +179,137 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
     with st.spinner("Paso 1/5: Generando guion ampliado estructurado (7 escenas)..."):
         try:
             prompt = (
-                f"Actúa como un experto productor de contenidos virales para Reels y TikTok. "
-                f"Escribe un guion dinámico y completo de exactamente 7 escenas sobre el tema: '{user_topic}', adaptado al estilo visual: '{visual_style}'. "
-                "ESTRUCTURA OBLIGATORIA PARA 60 SEGUNDOS:\n"
-                "- ESCENA 1 (Gancho): Pregunta o afirmación impactante (aprox. 30 palabras).\n"
-                "- ESCENA 2 (Punto 1 - Explicación): Desarrollo del primer concepto (aprox. 30 palabras).\n"
-                "- ESCENA 3 (Punto 1 - Ejemplo): Aplicación práctica del primer concepto (aprox. 30 palabras).\n"
-                "- ESCENA 4 (Punto 2 - Explicación): Desarrollo del segundo concepto (aprox. 30 palabras).\n"
-                "- ESCENA 5 (Punto 2 - Ejemplo): Aplicación práctica del segundo concepto (aprox. 30 palabras).\n"
-                "- ESCENA 6 (Punto 3 o Reflexión): Conclusión o cierre del desarrollo central (aprox. 30 palabras).\n"
-                "- ESCENA 7 (Cierre / CTA): Llamado a la acción claro para interactuar (aprox. 25 palabras).\n"
-                "REQUISITOS:\n"
-                "- Todo el texto de voz en off (VO) debe estar estrictamente en MAYÚSCULAS.\n"
-                "- Cada escena debe incluir un prompt visual detallado en INGLÉS para generar la imagen.\n"
-                "Devuelve la respuesta estrictamente separada por líneas con este formato exacto:\n"
-                "ESCENA 1 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
-                "ESCENA 2 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
-                "ESCENA 3 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
-                "ESCENA 4 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
-                "ESCENA 5 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
-                "ESCENA 6 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
-                "ESCENA 7 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]"
+                f"Actúa como un productor senior de contenido viral para TikTok, Reels y Shorts con experiencia en storytelling audiovisual.
+
+Tu tarea es escribir un guion optimizado para un video de aproximadamente 60 segundos sobre:
+
+TEMA:
+"{user_topic}"
+
+ESTILO VISUAL:
+"{visual_style}"
+
+OBJETIVO:
+Crear un video altamente adictivo que mantenga la atención durante todo el minuto utilizando curiosidad, emoción y ritmo rápido.
+
+========================
+ESTRUCTURA OBLIGATORIA
+========================
+
+Genera EXACTAMENTE 7 escenas.
+
+ESCENA 1
+• Gancho extremadamente impactante.
+• Pregunta, dato sorprendente o afirmación que genere curiosidad inmediata.
+• Aproximadamente 30 palabras.
+
+ESCENA 2
+• Introducción del primer concepto.
+• Explicación sencilla y directa.
+• Aproximadamente 30 palabras.
+
+ESCENA 3
+• Ejemplo práctico o demostración visual del primer concepto.
+• Aproximadamente 30 palabras.
+
+ESCENA 4
+• Introducción del segundo concepto.
+• Mantén el ritmo y aumenta el interés.
+• Aproximadamente 30 palabras.
+
+ESCENA 5
+• Ejemplo práctico del segundo concepto.
+• Aproximadamente 30 palabras.
+
+ESCENA 6
+• Conclusión, reflexión o tercer punto importante.
+• Debe preparar el cierre.
+• Aproximadamente 30 palabras.
+
+ESCENA 7
+• Final memorable.
+• CTA claro para comentar, compartir o seguir la cuenta.
+• Aproximadamente 25 palabras.
+
+========================
+VOZ EN OFF
+========================
+
+- TODA la voz en off debe escribirse exclusivamente en MAYÚSCULAS.
+- Lenguaje natural.
+- Frases cortas.
+- Fácil de narrar.
+- Alto impacto emocional.
+- Sin emojis.
+- Sin hashtags.
+- Sin comillas.
+
+========================
+PROMPT VISUAL
+========================
+
+Cada escena debe incluir un prompt visual COMPLETAMENTE EN INGLÉS.
+
+Debe describir:
+
+• subject
+• environment
+• composition
+• camera angle
+• lens
+• lighting
+• colors
+• mood
+• cinematic details
+• realistic textures
+• ultra detailed
+• 8K
+• depth of field
+• volumetric lighting
+• professional photography
+• highly cinematic
+
+Mantén continuidad visual entre escenas.
+
+Si aparecen personas, deben conservar:
+
+- edad
+- género
+- ropa
+- peinado
+- accesorios
+- colores
+- estilo
+
+para que todas las imágenes parezcan pertenecer al mismo video.
+
+No escribas texto dentro de las imágenes.
+
+========================
+FORMATO DE SALIDA
+========================
+
+Devuelve EXCLUSIVAMENTE estas 7 líneas.
+
+No agregues explicaciones.
+
+No uses Markdown.
+
+Formato EXACTO:
+
+ESCENA 1 | [VOZ EN OFF EN MAYÚSCULAS] | [Prompt visual en inglés]
+
+ESCENA 2 | [VOZ EN OFF EN MAYÚSCULAS] | [Prompt visual en inglés]
+
+ESCENA 3 | [VOZ EN OFF EN MAYÚSCULAS] | [Prompt visual en inglés]
+
+ESCENA 4 | [VOZ EN OFF EN MAYÚSCULAS] | [Prompt visual en inglés]
+
+ESCENA 5 | [VOZ EN OFF EN MAYÚSCULAS] | [Prompt visual en inglés]
+
+ESCENA 6 | [VOZ EN OFF EN MAYÚSCULAS] | [Prompt visual en inglés]
+
+ESCENA 7 | [VOZ EN OFF EN MAYÚSCULAS] | [Prompt visual en inglés]"
             )
             
             raw_output = None
