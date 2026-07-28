@@ -13,13 +13,13 @@ import base64
 import requests
 
 st.set_page_config(
-    page_title="Generador de Reels con Descarga de Proyecto (60s)",
+    page_title="Generador de Reels con Voces Profundas y Proyecto (60s)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels & Exportación de Guion (60s)")
-st.markdown("Crea videos virales y descarga un documento completo con todo el guion estructurado, tiempos y prompts de imagen.")
+st.title("🎬 Generador de Reels con Voces Profundas & Documento (60s)")
+st.markdown("Crea videos virales con locuciones profesionales graves/profundas, imágenes por API y exporta todo el proyecto.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -76,10 +76,13 @@ image_provider = st.sidebar.selectbox(
 )
 
 voice_option = st.sidebar.selectbox(
-    "Selecciona la Voz Neuronal:",
+    "Selecciona la Voz Neuronal (Nuevas Voces Profundas incluidas):",
     [
-        "México - Dalia (Femenina Natural y Fluida)",
+        "México - Emiliano (Masculina Muy Profunda / Épica y Documental)",
         "México - Jorge (Masculina Profunda y Clara)",
+        "Colombia - Carlos (Masculina Corporativa y Autoritaria / Graves)",
+        "México - Lucia (Femenina con Graves / Misterio y Narrativa)",
+        "México - Dalia (Femenina Natural y Fluida)",
         "Colombia - Gonzalo (Masculina Dinámica)",
         "Colombia - Salome (Femenina Cálida)",
         "Argentina - Tomás (Masculina Cercana)"
@@ -87,14 +90,17 @@ voice_option = st.sidebar.selectbox(
 )
 
 voice_mapping = {
-    "México - Dalia (Femenina Natural y Fluida)": "es-MX-DaliaNeural",
+    "México - Emiliano (Masculina Muy Profunda / Épica y Documental)": "es-MX-EmilianoNeural",
     "México - Jorge (Masculina Profunda y Clara)": "es-MX-JorgeNeural",
-    "México - Gonzalo (Masculina Dinámica)": "es-CO-GonzaloNeural",
-    "México - Salome (Femenina Cálida)": "es-CO-SalomeNeural",
+    "Colombia - Carlos (Masculina Corporativa y Autoritaria / Graves)": "es-CO-CarlosNeural",
+    "México - Lucia (Femenina con Graves / Misterio y Narrativa)": "es-MX-LuciaNeural",
+    "México - Dalia (Femenina Natural y Fluida)": "es-MX-DaliaNeural",
+    "Colombia - Gonzalo (Masculina Dinámica)": "es-CO-GonzaloNeural",
+    "Colombia - Salome (Femenina Cálida)": "es-CO-SalomeNeural",
     "Argentina - Tomás (Masculina Cercana)": "es-AR-TomasNeural"
 }
 
-selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
+selected_voice_id = voice_mapping.get(voice_option, "es-MX-EmilianoNeural")
 
 def generate_scene_image_multi(visual_prompt, style_name, provider):
     final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16, highly detailed, vibrant colors"
@@ -158,7 +164,7 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
     return img
 
-if st.button("🚀 Generar Reel y Documento del Proyecto (60s)"):
+if st.button("🚀 Generar Reel con Voz Profunda y Documento (60s)"):
     with st.spinner("Paso 1/5: Generando guion ampliado estructurado (7 escenas)..."):
         try:
             prompt = (
@@ -230,7 +236,7 @@ if st.button("🚀 Generar Reel y Documento del Proyecto (60s)"):
 
             full_narration = " ".join([s["text"] for s in scenes_data])
 
-            with st.spinner("Paso 2/5: Sintetizando locución neuronal de 60 segundos..."):
+            with st.spinner("Paso 2/5: Sintetizando locución con voz profunda neuronal (60s)..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
                 asyncio.run(generate_neural_voice(full_narration, selected_voice_id, audio_path))
                 
@@ -299,12 +305,11 @@ if st.button("🚀 Generar Reel y Documento del Proyecto (60s)"):
                     logger=None
                 )
                 
-                # Crear documento TXT/Markdown con el desglose completo del proyecto
                 doc_content = f"# PROYECTO DE REEL / TIKTOK (60 SEGUNDOS)\n\n"
                 doc_content += f"**Tema principal:** {user_topic}\n"
                 doc_content += f"**Estilo Visual:** {visual_style}\n"
                 doc_content += f"**Proveedor de Imágenes:** {image_provider}\n"
-                doc_content += f"**Voz Neuronal:** {voice_option}\n"
+                doc_content += f"**Voz Neuronal Seleccionada:** {voice_option} (`{selected_voice_id}`)\n"
                 doc_content += f"**Duración Total:** {int(total_duration)} segundos\n\n"
                 doc_content += "=" * 50 + "\n\n## GUION Y DESGLOSE POR ESCENAS\n\n"
                 
@@ -321,7 +326,7 @@ if st.button("🚀 Generar Reel y Documento del Proyecto (60s)"):
                 doc_file_path.write(doc_content)
                 doc_file_path.close()
 
-                st.success(f"¡Reel y documento generados con éxito! Duración total: {int(total_duration)} segundos.")
+                st.success(f"¡Reel generado con voz profunda y documento con éxito! Duración: {int(total_duration)}s.")
                 st.video(output_path)
                 
                 col1, col2 = st.columns(2)
@@ -330,7 +335,7 @@ if st.button("🚀 Generar Reel y Documento del Proyecto (60s)"):
                         st.download_button(
                             label="📥 Descargar Reel (.mp4)",
                             data=file,
-                            file_name="reel_proyecto_60s.mp4",
+                            file_name="reel_voz_profunda_60s.mp4",
                             mime="video/mp4"
                         )
                 with col2:
