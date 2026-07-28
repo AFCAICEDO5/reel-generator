@@ -2,13 +2,10 @@ import streamlit as st
 import os
 import tempfile
 import asyncio
-import time
 import edge_tts
 from google import genai
 from openai import OpenAI
-from moviepy import (
-    AudioFileClip, ImageClip, concatenate_videoclips
-)
+from moviepy import AudioFileClip, ImageClip, concatenate_videoclips
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 import random
@@ -86,7 +83,6 @@ voice_mapping = {
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
 def create_styled_background(style_name, scene_index):
-    """Genera un fondo visual estilizado de alta calidad adaptado al estilo seleccionado."""
     img = Image.new('RGB', (1080, 1920), color=(12, 12, 18))
     draw = ImageDraw.Draw(img)
     
@@ -141,7 +137,7 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                 "- ESCENA 7 (Cierre / CTA): Llamado a la acción claro, cercano y profesional para invitar a comentar (aprox. 25-30 palabras).\n"
                 "REQUISITOS:\n"
                 "- Todo el texto de voz en off (VO) debe estar estrictamente en MAYÚSCULAS.\n"
-                "- El tono debe ser conversacional, magnético y de alta retención (nada aburrido).\n"
+                "- El tono debe ser conversacional, magnético y de alta retención.\n"
                 "- Cada escena debe incluir un prompt visual detallado en inglés acorde al estilo '{visual_style}'.\n"
                 "Devuelve la respuesta estrictamente separada por líneas con este formato exacto:\n"
                 "ESCENA 1 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
@@ -155,7 +151,6 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
             
             raw_output = None
             
-            # Intentar con proveedores disponibles
             if gemini_client and not raw_output:
                 for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
                     try:
@@ -189,7 +184,7 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                 raise Exception("No se pudo generar el guion ampliado con ningún proveedor.")
 
             st.success("¡Guion ampliado de 60s generado con éxito!")
-            st.text_area("Desglose del Guion Ampliado:", raw_output, height=200)
+            st.text_area("Desglose del Guion Ampliado (JSON / Formato API de Escenas):", raw_output, height=200)
 
             scenes_data = []
             for line in raw_output.split("\n"):
@@ -233,16 +228,14 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                         th = bbox[3] - bbox[1]
                         
                         x = (1080 - tw) / 2
-                        y = 1250  # Tercio inferior central (zona segura TikTok/Reels)
+                        y = 1250
                         
-                        # Caja de fondo oscura translúcida para visibilidad perfecta
                         draw.rounded_rectangle(
                             [x - 40, y - 25, x + tw + 40, y + th + 25],
                             radius=25,
                             fill=(0, 0, 0, 210)
                         )
                         
-                        # Contorno grueso y texto amarillo brillante
                         for ox in range(-5, 6):
                             for oy in range(-5, 6):
                                 if ox != 0 or oy != 0:
