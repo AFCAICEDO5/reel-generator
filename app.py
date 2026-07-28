@@ -4,20 +4,21 @@ import tempfile
 import asyncio
 import edge_tts
 from google import genai
+from google.genai import types
 from openai import OpenAI
 from moviepy import AudioFileClip, ImageClip, concatenate_videoclips
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
-import random
+import base64
 
 st.set_page_config(
-    page_title="Generador de Reels Profesional (60 Segundos Ampliados)",
+    page_title="Generador de Reels con Imágenes por API (60s)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Viral & Ampliado (60s)")
-st.markdown("Crea videos con guiones profundos, voz neuronal de alta retención, fondos temáticos y subtítulos estilo TikTok.")
+st.title("🎬 Generador de Reels con Imágenes API & Voz (60s)")
+st.markdown("Crea videos virales completos generando imágenes reales por Inteligencia Artificial para cada escena.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -82,63 +83,58 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
-def create_styled_background(style_name, scene_index):
-    img = Image.new('RGB', (1080, 1920), color=(12, 12, 18))
+def generate_scene_image_with_api(visual_prompt, style_name):
+    """Genera una imagen real mediante la API de Gemini (imagen 9:16) o devuelve un respaldo si falla."""
+    final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16, highly detailed, vibrant colors"
+    
+    if gemini_client:
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.5-flash-image",
+                contents=final_prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE", "TEXT"],
+                ),
+            )
+            for part in response.candidates[0].content.parts:
+                if part.inline_data:
+                    image_bytes = base64.b64decode(part.inline_data.data)
+                    temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+                    with open(temp_img_path, "wb") as f:
+                        f.write(image_bytes)
+                    # Abrir con PIL y asegurar tamaño vertical exacto de Reels (1080x1920)
+                    img = Image.open(temp_img_path).convert("RGB")
+                    return img.resize((1080, 1920), Image.Resampling.LANCZOS)
+        except Exception:
+            pass
+            
+    # Respaldo automático estilo degradado profesional si la API de imágenes excede cuota o falla
+    img = Image.new('RGB', (1080, 1920), color=(15, 22, 38))
     draw = ImageDraw.Draw(img)
-    
-    palettes = {
-        "Cinematográfico": [(15, 22, 38), (45, 32, 65), (10, 10, 15)],
-        "Fotorrealista": [(22, 28, 35), (55, 65, 75), (12, 14, 18)],
-        "Anime": [(65, 22, 85), (22, 75, 110), (22, 12, 32)],
-        "Ciencia Ficción": [(8, 32, 55), (12, 65, 88), (3, 12, 22)],
-        "Terror Oscuro": [(12, 6, 6), (32, 12, 12), (6, 3, 3)],
-        "Terror": [(22, 6, 12), (42, 16, 22), (12, 3, 6)],
-        "Fantasía": [(42, 22, 65), (85, 42, 95), (22, 12, 32)],
-        "Minecraft": [(55, 125, 55), (105, 85, 55), (32, 85, 32)],
-        "Pixel Art": [(32, 32, 55), (75, 55, 95), (16, 16, 32)],
-        "Biblia / Religioso": [(55, 42, 22), (95, 75, 32), (22, 16, 12)],
-        "Cómic": [(85, 22, 22), (22, 42, 85), (12, 12, 12)],
-        "Cartoon": [(95, 52, 105), (32, 85, 125), (42, 22, 55)]
-    }
-    
-    colors = palettes.get(style_name, [(15, 22, 38), (45, 32, 65), (10, 10, 15)])
-    c1 = colors[scene_index % len(colors)]
-    c2 = colors[(scene_index + 1) % len(colors)]
-    
     for y in range(0, 1920, 10):
-        factor = y / 1920.0
-        r = int(c1[0] * (1 - factor) + c2[0] * factor)
-        g = int(c1[1] * (1 - factor) + c2[1] * factor)
-        b = int(c1[2] * (1 - factor) + c2[2] * factor)
+        r = int(15 + (y / 1920) * 30)
+        g = int(22 + (y / 1920) * 20)
+        b = int(38 + (y / 1920) * 50)
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
-        
-    for _ in range(12):
-        rx = random.randint(0, 1080)
-        ry = random.randint(0, 1920)
-        rw = random.randint(60, 350)
-        rh = random.randint(60, 350)
-        draw.ellipse([rx, ry, rx + rw, ry + rh], fill=(255, 255, 255, 18))
-
     return img
 
-if st.button("🚀 Generar Reel Ampliado (60s)"):
-    with st.spinner("Paso 1/4: Generando guion ampliado de alto impacto (Gancho + Desarrollo Profundo + CTA)..."):
+if st.button("🚀 Generar Reel con Imágenes API (60s)"):
+    with st.spinner("Paso 1/5: Generando guion ampliado estructurado..."):
         try:
             prompt = (
                 f"Actúa como un experto productor de contenidos virales para Reels y TikTok. "
-                f"Escribe un guion dinámico, persuasivo y muy completo de exactamente 7 escenas sobre el tema: '{user_topic}', adaptado al estilo visual: '{visual_style}'. "
-                "ESTRUCTURA OBLIGATORIA PARA ALCANZAR 60 SEGUNDOS EXACTOS:\n"
-                "- ESCENA 1 (Gancho): Pregunta o afirmación impactante para retener en los primeros 8 segundos (aprox. 30-35 palabras).\n"
-                "- ESCENA 2 (Punto 1 - Explicación): Desarrollo detallado del primer concepto clave (aprox. 30-35 palabras).\n"
-                "- ESCENA 3 (Punto 1 - Ejemplo): Aplicación práctica o beneficio directo del primer concepto (aprox. 30-35 palabras).\n"
-                "- ESCENA 4 (Punto 2 - Explicación): Desarrollo detallado del segundo concepto clave (aprox. 30-35 palabras).\n"
-                "- ESCENA 5 (Punto 2 - Ejemplo): Aplicación práctica o beneficio directo del segundo concepto (aprox. 30-35 palabras).\n"
-                "- ESCENA 6 (Punto 3 o Reflexión): Conclusión analítica o cierre del desarrollo central (aprox. 30-35 palabras).\n"
-                "- ESCENA 7 (Cierre / CTA): Llamado a la acción claro, cercano y profesional para invitar a comentar (aprox. 25-30 palabras).\n"
+                f"Escribe un guion dinámico y completo de exactamente 7 escenas sobre el tema: '{user_topic}', adaptado al estilo visual: '{visual_style}'. "
+                "ESTRUCTURA OBLIGATORIA PARA 60 SEGUNDOS:\n"
+                "- ESCENA 1 (Gancho): Pregunta o afirmación impactante (aprox. 30 palabras).\n"
+                "- ESCENA 2 (Punto 1 - Explicación): Desarrollo del primer concepto (aprox. 30 palabras).\n"
+                "- ESCENA 3 (Punto 1 - Ejemplo): Aplicación práctica del primer concepto (aprox. 30 palabras).\n"
+                "- ESCENA 4 (Punto 2 - Explicación): Desarrollo del segundo concepto (aprox. 30 palabras).\n"
+                "- ESCENA 5 (Punto 2 - Ejemplo): Aplicación práctica del segundo concepto (aprox. 30 palabras).\n"
+                "- ESCENA 6 (Punto 3 o Reflexión): Conclusión o cierre del desarrollo central (aprox. 30 palabras).\n"
+                "- ESCENA 7 (Cierre / CTA): Llamado a la acción claro para interactuar (aprox. 25 palabras).\n"
                 "REQUISITOS:\n"
                 "- Todo el texto de voz en off (VO) debe estar estrictamente en MAYÚSCULAS.\n"
-                "- El tono debe ser conversacional, magnético y de alta retención.\n"
-                "- Cada escena debe incluir un prompt visual detallado en inglés acorde al estilo '{visual_style}'.\n"
+                "- Cada escena debe incluir un prompt visual detallado en INGLÉS para generar la imagen.\n"
                 "Devuelve la respuesta estrictamente separada por líneas con este formato exacto:\n"
                 "ESCENA 1 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
                 "ESCENA 2 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
@@ -150,7 +146,6 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
             )
             
             raw_output = None
-            
             if gemini_client and not raw_output:
                 for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
                     try:
@@ -164,7 +159,7 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                 try:
                     comp = groq_client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
-                        messages=[{"role": "system", "content": "Eres un guionista profesional de TikTok."}, {"role": "user", "content": prompt}]
+                        messages=[{"role": "system", "content": "Eres un guionista profesional."}, {"role": "user", "content": prompt}]
                     )
                     raw_output = comp.choices[0].message.content.strip()
                 except Exception:
@@ -174,17 +169,14 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                 try:
                     comp = openrouter_client.chat.completions.create(
                         model="meta-llama/llama-3.3-70b-instruct:free",
-                        messages=[{"role": "system", "content": "Eres un guionista profesional de TikTok."}, {"role": "user", "content": prompt}]
+                        messages=[{"role": "system", "content": "Eres un guionista profesional."}, {"role": "user", "content": prompt}]
                     )
                     raw_output = comp.choices[0].message.content.strip()
                 except Exception:
                     pass
 
             if not raw_output:
-                raise Exception("No se pudo generar el guion ampliado con ningún proveedor.")
-
-            st.success("¡Guion ampliado de 60s generado con éxito!")
-            st.text_area("Desglose del Guion Ampliado (JSON / Formato API de Escenas):", raw_output, height=200)
+                raise Exception("No se pudo generar el guion.")
 
             scenes_data = []
             for line in raw_output.split("\n"):
@@ -198,7 +190,7 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
 
             full_narration = " ".join([s["text"] for s in scenes_data])
 
-            with st.spinner("Paso 2/4: Sintetizando locución extendida de 60 segundos..."):
+            with st.spinner("Paso 2/5: Sintetizando locución neuronal de 60 segundos..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
                 asyncio.run(generate_neural_voice(full_narration, selected_voice_id, audio_path))
                 
@@ -206,11 +198,12 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                 total_duration = audio_clip.duration
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/4: Renderizando imágenes temáticas y subtítulos dinámicos estilo TikTok..."):
+            with st.spinner("Paso 3/5: Generando imágenes por API para cada escena..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
-                    img_pil = create_styled_background(visual_style, i)
+                    # Generación de imagen real por API usando el prompt de la escena
+                    img_pil = generate_scene_image_with_api(scene['visual'], visual_style)
                     
                     try:
                         txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
@@ -228,12 +221,12 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                         th = bbox[3] - bbox[1]
                         
                         x = (1080 - tw) / 2
-                        y = 1250
+                        y = 1250  # Zona segura inferior para subtítulos
                         
                         draw.rounded_rectangle(
                             [x - 40, y - 25, x + tw + 40, y + th + 25],
                             radius=25,
-                            fill=(0, 0, 0, 210)
+                            fill=(0, 0, 0, 215)
                         )
                         
                         for ox in range(-5, 6):
@@ -256,7 +249,7 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                 final_visual = concatenate_videoclips(clip_list)
                 final_video = final_visual.with_audio(audio_clip)
 
-            with st.spinner("Paso 4/4: Exportando video final en alta definición..."):
+            with st.spinner("Paso 5/5: Renderizando y exportando video final en HD..."):
                 output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
                 final_video.write_videofile(
                     output_path,
@@ -267,14 +260,14 @@ if st.button("🚀 Generar Reel Ampliado (60s)"):
                     logger=None
                 )
                 
-                st.success(f"¡Reel ampliado generado con éxito! Duración total: {int(total_duration)} segundos.")
+                st.success(f"¡Reel generado con imágenes API con éxito! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 with open(output_path, "rb") as file:
                     st.download_button(
-                        label="📥 Descargar Reel de 60s (.mp4)",
+                        label="📥 Descargar Reel con Imágenes API (.mp4)",
                         data=file,
-                        file_name="reel_ampliado_60s.mp4",
+                        file_name="reel_con_imagenes_api.mp4",
                         mime="video/mp4"
                     )
 
