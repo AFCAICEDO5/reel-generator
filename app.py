@@ -88,7 +88,6 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
                 "ESCENA 6 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 6]"
             )
             
-            # --- SISTEMA DE REINTENTOS Y RESPALDO POR ALTA DEMANDA (503) ---
             response = None
             models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
             
@@ -113,7 +112,6 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
             
             if not response:
                 raise Exception("Todos los modelos están experimentando alta demanda en este momento. Por favor, intenta de nuevo en unos minutos.")
-            # -------------------------------------------------------------
 
             raw_output = response.text.strip()
             
@@ -138,7 +136,7 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
 
             with st.spinner("Paso 2/4: Sintetizando locución con Voz Neuronal..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                await asyncio.run(generate_neural_voice(full_narration.strip(), selected_voice_id, audio_path))
+                asyncio.run(generate_neural_voice(full_narration.strip(), selected_voice_id, audio_path))
                 
                 audio_clip = AudioFileClip(audio_path)
                 total_duration = min(audio_clip.duration, 60)
