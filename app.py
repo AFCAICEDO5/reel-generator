@@ -5,16 +5,16 @@ import asyncio
 import edge_tts
 from google import genai
 from openai import OpenAI
-from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 import requests
+import subprocess
 
 # CONFIG
-st.set_page_config(page_title="Reels PRO 60s", layout="centered")
-st.title("🎬 Generador PRO de Reels Virales (60s)")
+st.set_page_config(page_title="Reels PRO FFmpeg", layout="centered")
+st.title("🎬 Generador PRO de Reels (SIN MoviePy)")
 
-# --- API KEYS ---
+# --- KEYS ---
 gemini_api_key = os.environ.get("GEMINI_API_KEY")
 openrouter_api_key = os.environ.get("OPENROUTER_API_KEY")
 
@@ -25,16 +25,15 @@ openrouter_client = OpenAI(
 ) if openrouter_api_key else None
 
 # --- INPUT ---
-user_topic = st.text_input("Tema:", "3 hábitos que cambiarán tu vida")
-visual_style = st.selectbox("Estilo:", ["Cinematográfico", "Realista", "Religioso"])
+tema = st.text_input("Tema:", "3 hábitos que cambiarán tu vida")
 
 # --- VOZ ---
-async def generar_voz(texto, voz, path):
-    communicate = edge_tts.Communicate(texto, voz)
+async def generar_voz(texto, path):
+    communicate = edge_tts.Communicate(texto, "es-MX-DaliaNeural")
     await communicate.save(path)
 
-# --- IMÁGENES ---
-def generar_imagen(prompt):
+# --- IMAGEN ---
+def generar_imagen(prompt, idx):
     try:
         res = openrouter_client.images.generate(
             model="stabilityai/stable-diffusion-3-medium",
@@ -43,164 +42,105 @@ def generar_imagen(prompt):
         )
         url = res.data[0].url
         img_data = requests.get(url).content
-        path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
-
-        with open(path, "wb") as f:
-            f.write(img_data)
-
-        return Image.open(path).resize((1080, 1920))
-
     except Exception as e:
-        st.warning(f"⚠️ Error generando imagen: {e}")
-        return Image.new("RGB", (1080, 1920), (20, 20, 20))
+        st.warning(f"Error imagen: {e}")
+        img = Image.new("RGB", (1080,1920),(20,20,20))
+        path = f"img_{idx}.jpg"
+        img.save(path)
+        return path
+
+    path = f"img_{idx}.jpg"
+    with open(path, "wb") as f:
+        f.write(img_data)
+
+    return path
 
 # --- BOTÓN ---
-if st.button("🚀 GENERAR REEL PRO"):
+if st.button("🚀 GENERAR VIDEO"):
 
-    # =========================
-    # 1. GENERAR GUION (ROBUSTO)
-    # =========================
-    with st.spinner("Generando guion viral..."):
+    # 1. GUION
+    prompt = f"""
+    Crea guion viral sobre {tema}
 
-        prompt = f"""
-        Crea un guion viral para TikTok sobre: {user_topic}
+    7 escenas cortas.
+    formato:
+    ESCENA | texto | prompt visual
+    """
 
-        7 escenas:
-        1 Hook extremo
-        2 Contexto
-        3 Valor
-        4 Valor
-        5 Valor
-        6 Giro
-        7 CTA emocional
+    raw = None
 
-        Reglas:
-        - Frases cortas
-        - Lenguaje emocional
-        - NO mayúsculas completas
-        - Máximo 20 palabras
-
-        Formato:
-        ESCENA | texto | prompt visual en inglés
-        """
-
-        raw = None
-
-        # 🔹 Intento 1: Gemini
-        if gemini_client:
-            try:
-                res = gemini_client.models.generate_content(
-                    model="gemini-1.5-flash",
-                    contents=prompt
-                )
-                raw = res.text
-            except Exception as e:
-                st.warning(f"⚠️ Gemini falló: {e}")
-
-        # 🔹 Intento 2: OpenRouter
-        if not raw and openrouter_client:
-            try:
-                comp = openrouter_client.chat.completions.create(
-                    model="meta-llama/llama-3.3-70b-instruct:free",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                raw = comp.choices[0].message.content
-            except Exception as e:
-                st.error(f"❌ OpenRouter falló: {e}")
-                st.stop()
-
-        if not raw:
-            st.error("❌ No se pudo generar el guion")
-            st.stop()
-
-        # PARSEAR ESCENAS
-        scenes = []
-        for line in raw.split("\n"):
-            if "|" in line:
-                parts = line.split("|")
-                if len(parts) >= 3:
-                    scenes.append({
-                        "text": parts[1].strip(),
-                        "visual": parts[2].strip()
-                    })
-
-        if len(scenes) < 5:
-            st.error("❌ Guion inválido")
-            st.stop()
-
-    # =========================
-    # 2. VOZ NATURAL
-    # =========================
-    texto_total = ". ... ".join([s["text"] for s in scenes]) + "."
-    audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-
-    asyncio.run(generar_voz(texto_total, "es-MX-DaliaNeural", audio_path))
-
-    audio = AudioFileClip(audio_path)
-
-    # =========================
-    # 3. FORZAR 60s
-    # =========================
-    TARGET = 60
-
-    if audio.duration < TARGET:
-        silence = AudioClip(lambda t: 0, duration=TARGET - audio.duration)
-        audio = concatenate_audioclips([audio, silence])
-    else:
-        audio = audio.subclip(0, TARGET)
-
-    scene_duration = TARGET / len(scenes)
-
-    # =========================
-    # 4. CREAR VIDEO
-    # =========================
-    clips = []
-
-    for s in scenes:
-        img = generar_imagen(s["visual"])
-
-        # TEXTO
-        txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(txt_layer)
-
+    if gemini_client:
         try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 70)
+            res = gemini_client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt
+            )
+            raw = res.text
         except:
-            font = ImageFont.load_default()
+            pass
 
-        texto = textwrap.fill(s["text"], width=14)
-
-        draw.multiline_text(
-            (100, 1300),
-            texto,
-            font=font,
-            fill=(255, 230, 0)
+    if not raw and openrouter_client:
+        comp = openrouter_client.chat.completions.create(
+            model="meta-llama/llama-3.3-70b-instruct:free",
+            messages=[{"role": "user", "content": prompt}]
         )
+        raw = comp.choices[0].message.content
 
-        img = Image.alpha_composite(img.convert("RGBA"), txt_layer).convert("RGB")
+    escenas = []
+    for l in raw.split("\n"):
+        if "|" in l:
+            p = l.split("|")
+            if len(p)>=3:
+                escenas.append({"text":p[1].strip(),"visual":p[2].strip()})
 
-        path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
-        img.save(path)
+    if len(escenas) < 3:
+        st.error("Error generando guion")
+        st.stop()
 
-        clip = (
-            ImageClip(path)
-            .set_duration(scene_duration)
-            .resize(lambda t: 1 + 0.08 * t)
-            .set_position("center")
-        )
+    # 2. VOZ
+    texto_total = ". ... ".join([s["text"] for s in escenas]) + "."
+    audio_path = "audio.mp3"
+    asyncio.run(generar_voz(texto_total, audio_path))
 
-        clips.append(clip)
+    # 3. IMÁGENES
+    image_paths = []
+    for i, s in enumerate(escenas):
+        path = generar_imagen(s["visual"], i)
+        image_paths.append(path)
 
-    video = concatenate_videoclips(clips).set_audio(audio)
+    # 4. CREAR VIDEO CON FFMPEG
+    duration = 60 / len(image_paths)
 
-    output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    txt_file = "inputs.txt"
+    with open(txt_file, "w") as f:
+        for img in image_paths:
+            f.write(f"file '{img}'\n")
+            f.write(f"duration {duration}\n")
 
-    video.write_videofile(
-        output,
-        fps=24,
-        codec="libx264",
-        audio_codec="aac"
-    )
+    video_sin_audio = "video.mp4"
 
-    st.success("🔥 Reel generado correctamente")
-    st.video(output)
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", txt_file,
+        "-vsync", "vfr",
+        "-pix_fmt", "yuv420p",
+        "-vf", "scale=1080:1920",
+        video_sin_audio
+    ])
+
+    final = "final.mp4"
+
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-i", video_sin_audio,
+        "-i", audio_path,
+        "-t", "60",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        final
+    ])
+
+    st.success("🔥 Video listo (SIN MoviePy)")
+    st.video(final)
