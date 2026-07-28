@@ -13,13 +13,13 @@ import base64
 import requests
 
 st.set_page_config(
-    page_title="Generador de Reels con Voces Profundas y Proyecto (60s)",
+    page_title="Generador de Reels con Respaldo de Audio (60s)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels con Voces Profundas & Documento (60s)")
-st.markdown("Crea videos virales con locuciones profesionales graves/profundas, imágenes por API y exporta todo el proyecto.")
+st.title("🎬 Generador de Reels con Control de Audio & Documento (60s)")
+st.markdown("Crea videos virales con manejo robusto de errores de locución y exportación de proyecto.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -36,9 +36,20 @@ gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
 groq_client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=groq_api_key) if groq_api_key else None
 openrouter_client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=openrouter_api_key) if openrouter_api_key else None
 
-async def generate_neural_voice(text, voice_name, output_path):
-    communicate = edge_tts.Communicate(text, voice_name)
-    await communicate.save(output_path)
+async def generate_neural_voice_robust(text, voice_name, output_path):
+    """Intenta generar el audio con reintentos para evitar el error 'No audio was received'."""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            communicate = edge_tts.Communicate(text, voice_name)
+            await communicate.save(output_path)
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+                return True
+        except Exception:
+            if attempt == max_retries - 1:
+                raise
+            await asyncio.sleep(2)
+    return False
 
 st.sidebar.header("🛠️ Configuración del Reel")
 
@@ -76,7 +87,7 @@ image_provider = st.sidebar.selectbox(
 )
 
 voice_option = st.sidebar.selectbox(
-    "Selecciona la Voz Neuronal (Nuevas Voces Profundas incluidas):",
+    "Selecciona la Voz Neuronal (Voces Profundas y Estándar):",
     [
         "México - Emiliano (Masculina Muy Profunda / Épica y Documental)",
         "México - Jorge (Masculina Profunda y Clara)",
@@ -164,7 +175,7 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
     return img
 
-if st.button("🚀 Generar Reel con Voz Profunda y Documento (60s)"):
+if st.button("🚀 Generar Reel con Control Robusto (60s)"):
     with st.spinner("Paso 1/5: Generando guion ampliado estructurado (7 escenas)..."):
         try:
             prompt = (
@@ -236,9 +247,13 @@ if st.button("🚀 Generar Reel con Voz Profunda y Documento (60s)"):
 
             full_narration = " ".join([s["text"] for s in scenes_data])
 
-            with st.spinner("Paso 2/5: Sintetizando locución con voz profunda neuronal (60s)..."):
+            with st.spinner("Paso 2/5: Sintetizando locución neuronal con reintentos automáticos..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                asyncio.run(generate_neural_voice(full_narration, selected_voice_id, audio_path))
+                try:
+                    asyncio.run(generate_neural_voice_robust(full_narration, selected_voice_id, audio_path))
+                except Exception:
+                    # Respaldo automático si la red de voz falla por completo: usa otra voz por defecto o reintenta con Dalia
+                    asyncio.run(generate_neural_voice_robust(full_narration, "es-MX-DaliaNeural", audio_path))
                 
                 audio_clip = AudioFileClip(audio_path)
                 total_duration = audio_clip.duration
@@ -326,7 +341,7 @@ if st.button("🚀 Generar Reel con Voz Profunda y Documento (60s)"):
                 doc_file_path.write(doc_content)
                 doc_file_path.close()
 
-                st.success(f"¡Reel generado con voz profunda y documento con éxito! Duración: {int(total_duration)}s.")
+                st.success(f"¡Reel generado con éxito! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 col1, col2 = st.columns(2)
@@ -335,7 +350,7 @@ if st.button("🚀 Generar Reel con Voz Profunda y Documento (60s)"):
                         st.download_button(
                             label="📥 Descargar Reel (.mp4)",
                             data=file,
-                            file_name="reel_voz_profunda_60s.mp4",
+                            file_name="reel_robusto_60s.mp4",
                             mime="video/mp4"
                         )
                 with col2:
