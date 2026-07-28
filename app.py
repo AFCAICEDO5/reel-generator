@@ -5,6 +5,7 @@ import asyncio
 import time
 import edge_tts
 from google import genai
+from openai import OpenAI
 from moviepy import (
     AudioFileClip, ImageClip, concatenate_videoclips
 )
@@ -12,21 +13,27 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 st.set_page_config(
-    page_title="Generador de Reels Viral (Gemini)",
+    page_title="Generador de Reels Viral (Multi-IA)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Viral")
-st.markdown("Crea videos con imágenes por escena, subtítulos gigantes y voz neuronal 100% natural.")
+st.title("🎬 Generador de Reels Viral (Gemini + Groq / OpenRouter)")
+st.markdown("Crea videos con respaldo multi-proveedor para evitar bloqueos por cuota.")
 
-api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
+# --- CREDENCIALES ---
+gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
+groq_api_key = st.secrets.get("GROQ_API_KEY") if "GROQ_API_KEY" in st.secrets else os.environ.get("GROQ_API_KEY")
+openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY") if "OPENROUTER_API_KEY" in st.secrets else os.environ.get("OPENROUTER_API_KEY")
 
-if not api_key:
-    st.error("⚠️ No se encontró la `GEMINI_API_KEY` en los Secrets de Streamlit. Configúrala en el panel de administración.")
+if not gemini_api_key and not groq_api_key and not openrouter_api_key:
+    st.error("⚠️ Configura al menos una clave de API (Gemini, Groq u OpenRouter) en los Secrets de Streamlit.")
     st.stop()
 
-client = genai.Client(api_key=api_key)
+# Inicializar clientes
+gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
+groq_client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=groq_api_key) if groq_api_key else None
+openrouter_client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=openrouter_api_key) if openrouter_api_key else None
 
 async def generate_neural_voice(text, voice_name, output_path):
     communicate = edge_tts.Communicate(text, voice_name)
@@ -71,8 +78,8 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
-if st.button("🚀 Generar Reel con Gemini (60s)"):
-    with st.spinner("Paso 1/4: Generando guion estructurado con Gemini (gestionando cuota)..."):
+if st.button("🚀 Generar Reel con Respaldo Inteligente (60s)"):
+    with st.spinner("Paso 1/4: Generando guion estructurado (Buscando proveedor disponible)..."):
         try:
             prompt = (
                 f"Actúa como un director de contenidos virales. Diseña un guion fluido de exactamente 6 escenas cortas "
@@ -88,36 +95,59 @@ if st.button("🚀 Generar Reel con Gemini (60s)"):
                 "ESCENA 6 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 6]"
             )
             
-            response = None
-            models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
+            raw_output = None
             
-            for model_name in models_to_try:
-                success = False
-                for attempt in range(4):
-                    try:
-                        response = client.models.generate_content(
-                            model=model_name,
-                            contents=prompt
-                        )
-                        success = True
-                        break
-                    except Exception as api_err:
-                        err_str = str(api_err)
-                        # Si es error de cuota (429) o saturación (503/404), esperamos unos segundos antes de reintentar
-                        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "404" in err_str:
-                            wait_time = 15 * (attempt + 1) # Espera progresiva de 15s, 30s, 45s...
-                            time.sleep(wait_time)
+            # --- CAMINO 1: GEMINI ---
+            if gemini_client and not raw_output:
+                models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
+                for model_name in models_to_try:
+                    success = False
+                    for attempt in range(2):
+                        try:
+                            response = gemini_client.models.generate_content(
+                                model=model_name,
+                                contents=prompt
+                            )
+                            raw_output = response.text.strip()
+                            success = True
+                            break
+                        except Exception:
+                            time.sleep(2)
                             continue
-                        else:
-                            raise api_err
-                if success:
-                    break
-            
-            if not response:
-                raise Exception("Se ha agotado temporalmente la cuota gratuita de la API. Por favor, espera alrededor de 1 minuto antes de volver a hacer clic en generar.")
+                    if success:
+                        break
 
-            raw_output = response.text.strip()
-            
+            # --- CAMINO 2: GROQ (Respaldo ultrarrápido y gratuito) ---
+            if not raw_output and groq_client:
+                try:
+                    completion = groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": "Eres un director de contenidos virales."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    raw_output = completion.choices[0].message.content.strip()
+                except Exception:
+                    pass
+
+            # --- CAMINO 3: OPENROUTER (Respaldo alternativo) ---
+            if not raw_output and openrouter_client:
+                try:
+                    completion = openrouter_client.chat.completions.create(
+                        model="meta-llama/llama-3.3-70b-instruct:free",
+                        messages=[
+                            {"role": "system", "content": "Eres un director de contenidos virales."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    raw_output = completion.choices[0].message.content.strip()
+                except Exception:
+                    pass
+
+            if not raw_output:
+                raise Exception("Todos los proveedores configurados (Gemini, Groq, OpenRouter) fallaron o se agotaron sus cuotas.")
+
             st.success("¡Guion y prompts visuales generados con éxito!")
             st.text_area("Desglose del Guion:", raw_output, height=140)
 
@@ -151,23 +181,24 @@ if st.button("🚀 Generar Reel con Gemini (60s)"):
                 for i, scene in enumerate(scenes_data):
                     img_path = None
                     
-                    try:
-                        img_response = client.models.generate_images(
-                            model='imagen-3.0-generate-002',
-                            prompt=f"{scene['visual']}, vertical 9:16 aspect ratio, ultra-detailed, 8k resolution, cinematic lighting, photorealistic masterpiece",
-                            config=dict(
-                                number_of_images=1,
-                                output_mime_type="image/jpeg",
-                                aspect_ratio="9:16",
+                    if gemini_client:
+                        try:
+                            img_response = gemini_client.models.generate_images(
+                                model='imagen-3.0-generate-002',
+                                prompt=f"{scene['visual']}, vertical 9:16 aspect ratio, ultra-detailed, 8k resolution, cinematic lighting, photorealistic masterpiece",
+                                config=dict(
+                                    number_of_images=1,
+                                    output_mime_type="image/jpeg",
+                                    aspect_ratio="9:16",
+                                )
                             )
-                        )
-                        for generated_image in img_response.generated_images:
-                            image_bytes = generated_image.image.image_bytes
-                            img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
-                            with open(img_path, "wb") as f:
-                                f.write(image_bytes)
-                    except Exception:
-                        pass
+                            for generated_image in img_response.generated_images:
+                                image_bytes = generated_image.image.image_bytes
+                                img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+                                with open(img_path, "wb") as f:
+                                    f.write(image_bytes)
+                        except Exception:
+                            pass
                     
                     if not img_path:
                         base_img = Image.new('RGB', (1080, 1920), color=(10, 15, 30))
