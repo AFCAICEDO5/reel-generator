@@ -1,6 +1,10 @@
 streamlit
-google-genai
-openai
-edge-tts
 moviepy
+edge-tts
 pillow
+requests
+openai
+google-generativeai
+imageio
+imageio-ffmpeg
+numpy
