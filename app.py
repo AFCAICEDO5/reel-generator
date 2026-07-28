@@ -89,7 +89,8 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
             )
             
             response = None
-            models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
+            # Modelos actualizados y disponibles
+            models_to_try = ["gemini-1.5-flash", "gemini-1.5-pro"]
             
             for model_name in models_to_try:
                 success = False
@@ -102,7 +103,7 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
                         success = True
                         break
                     except Exception as api_err:
-                        if "503" in str(api_err) or "UNAVAILABLE" in str(api_err):
+                        if "503" in str(api_err) or "UNAVAILABLE" in str(api_err) or "404" in str(api_err):
                             time.sleep(2 * (attempt + 1))
                             continue
                         else:
@@ -111,7 +112,7 @@ if st.button("🚀 Generar Reel con Imágenes y Subtítulos Gigantes (60s)"):
                     break
             
             if not response:
-                raise Exception("Todos los modelos están experimentando alta demanda en este momento. Por favor, intenta de nuevo en unos minutos.")
+                raise Exception("No se pudo conectar con los modelos disponibles. Por favor, verifica tu API Key o intenta más tarde.")
 
             raw_output = response.text.strip()
             
