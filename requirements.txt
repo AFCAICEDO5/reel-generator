@@ -1,10 +1,10 @@
 streamlit
 moviepy
+imageio
+imageio-ffmpeg
+numpy
 edge-tts
 pillow
 requests
 openai
 google-generativeai
-imageio
-imageio-ffmpeg
-numpy
