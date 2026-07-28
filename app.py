@@ -13,13 +13,13 @@ import base64
 import requests
 
 st.set_page_config(
-    page_title="Generador de Reels con Opciones de API de Imágenes (60s)",
+    page_title="Generador de Reels con Descarga de Proyecto (60s)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels con Múltiples Proveedores de Imágenes (60s)")
-st.markdown("Crea videos virales configurando el proveedor de imágenes (Google Gemini, Puter.js, Cloudflare Workers AI o Modelos Open Source).")
+st.title("🎬 Generador de Reels & Exportación de Guion (60s)")
+st.markdown("Crea videos virales y descarga un documento completo con todo el guion estructurado, tiempos y prompts de imagen.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -97,10 +97,8 @@ voice_mapping = {
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
 def generate_scene_image_multi(visual_prompt, style_name, provider):
-    """Genera una imagen usando el proveedor seleccionado por el usuario."""
     final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16, highly detailed, vibrant colors"
     
-    # 1. Google Gemini
     if provider == "Google Gemini (flash-image nativo)" and gemini_client:
         try:
             response = gemini_client.models.generate_content(
@@ -119,7 +117,6 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    # 2. Cloudflare Workers AI
     elif provider == "Cloudflare Workers AI (Serverless)" and cloudflare_api_token and cloudflare_account_id:
         try:
             url = f"https://api.cloudflare.com/client/v4/accounts/{cloudflare_account_id}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning"
@@ -135,10 +132,8 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    # 3. Puter.js / Frontend o 4. Open Source (Fallback simulado o pasarela compatible con OpenAI images API si aplica)
     elif provider == "Modelos Open Source (FLUX / Stable Diffusion via API)" and openrouter_client:
         try:
-            # Ejemplo integrando generación mediante modelos compatibles en OpenRouter / fal.ai / HuggingFace
             response = openrouter_client.images.generate(
                 model="stabilityai/stable-diffusion-3-medium",
                 prompt=final_prompt,
@@ -154,7 +149,6 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    # Respaldo automático estilo degradado profesional si el proveedor falla o no tiene credenciales
     img = Image.new('RGB', (1080, 1920), color=(15, 22, 38))
     draw = ImageDraw.Draw(img)
     for y in range(0, 1920, 10):
@@ -164,7 +158,7 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
     return img
 
-if st.button("🚀 Generar Reel con Proveedor Seleccionado (60s)"):
+if st.button("🚀 Generar Reel y Documento del Proyecto (60s)"):
     with st.spinner("Paso 1/5: Generando guion ampliado estructurado (7 escenas)..."):
         try:
             prompt = (
@@ -266,7 +260,7 @@ if st.button("🚀 Generar Reel con Proveedor Seleccionado (60s)"):
                         th = bbox[3] - bbox[1]
                         
                         x = (1080 - tw) / 2
-                        y = 1250  # Zona segura inferior para subtítulos
+                        y = 1250
                         
                         draw.rounded_rectangle(
                             [x - 40, y - 25, x + tw + 40, y + th + 25],
@@ -294,7 +288,7 @@ if st.button("🚀 Generar Reel con Proveedor Seleccionado (60s)"):
                 final_visual = concatenate_videoclips(clip_list)
                 final_video = final_visual.with_audio(audio_clip)
 
-            with st.spinner("Paso 5/5: Renderizando y exportando video final en HD..."):
+            with st.spinner("Paso 5/5: Renderizando video y empaquetando documento del proyecto..."):
                 output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
                 final_video.write_videofile(
                     output_path,
@@ -305,16 +299,48 @@ if st.button("🚀 Generar Reel con Proveedor Seleccionado (60s)"):
                     logger=None
                 )
                 
-                st.success(f"¡Reel generado con éxito! Duración total: {int(total_duration)} segundos.")
+                # Crear documento TXT/Markdown con el desglose completo del proyecto
+                doc_content = f"# PROYECTO DE REEL / TIKTOK (60 SEGUNDOS)\n\n"
+                doc_content += f"**Tema principal:** {user_topic}\n"
+                doc_content += f"**Estilo Visual:** {visual_style}\n"
+                doc_content += f"**Proveedor de Imágenes:** {image_provider}\n"
+                doc_content += f"**Voz Neuronal:** {voice_option}\n"
+                doc_content += f"**Duración Total:** {int(total_duration)} segundos\n\n"
+                doc_content += "=" * 50 + "\n\n## GUION Y DESGLOSE POR ESCENAS\n\n"
+                
+                current_time = 0.0
+                for i, scene in enumerate(scenes_data):
+                    start_t = current_time
+                    end_t = current_time + scene_duration
+                    doc_content += f"### Escena {i+1} ({start_t:.1f}s - {end_t:.1f}s)\n"
+                    doc_content += f"- **Voz en Off (VO):** {scene['text']}\n"
+                    doc_content += f"- **Prompt Visual (IA):** {scene['visual']}\n\n"
+                    current_time = end_t
+
+                doc_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8")
+                doc_file_path.write(doc_content)
+                doc_file_path.close()
+
+                st.success(f"¡Reel y documento generados con éxito! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
-                with open(output_path, "rb") as file:
-                    st.download_button(
-                        label="📥 Descargar Reel (.mp4)",
-                        data=file,
-                        file_name="reel_multiprovider_60s.mp4",
-                        mime="video/mp4"
-                    )
+                col1, col2 = st.columns(2)
+                with col1:
+                    with open(output_path, "rb") as file:
+                        st.download_button(
+                            label="📥 Descargar Reel (.mp4)",
+                            data=file,
+                            file_name="reel_proyecto_60s.mp4",
+                            mime="video/mp4"
+                        )
+                with col2:
+                    with open(doc_file_path.name, "rb") as file_doc:
+                        st.download_button(
+                            label="📄 Descargar Guion y Prompts (.txt)",
+                            data=file_doc,
+                            file_name="guion_y_prompts_proyecto.txt",
+                            mime="text/plain"
+                        )
 
         except Exception as e:
             st.error(f"Error durante el proceso de generación: {e}")
