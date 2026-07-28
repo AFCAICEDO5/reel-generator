@@ -13,13 +13,13 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 st.set_page_config(
-    page_title="Generador de Reels Viral (Multi-IA)",
+    page_title="Generador de Reels Viral (60s + Subtítulos Estilo TikTok)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Viral (Gemini + Groq / OpenRouter)")
-st.markdown("Crea videos con respaldo multi-proveedor para evitar bloqueos por cuota.")
+st.title("🎬 Generador de Reels Viral (Definitivo)")
+st.markdown("Crea videos completos de 60 segundos con imágenes por escena y subtítulos gigantes estilo TikTok.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -30,7 +30,6 @@ if not gemini_api_key and not groq_api_key and not openrouter_api_key:
     st.error("⚠️ Configura al menos una clave de API (Gemini, Groq u OpenRouter) en los Secrets de Streamlit.")
     st.stop()
 
-# Inicializar clientes
 gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
 groq_client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=groq_api_key) if groq_api_key else None
 openrouter_client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=openrouter_api_key) if openrouter_api_key else None
@@ -43,7 +42,7 @@ st.sidebar.header("🛠️ Configuración del Reel")
 
 user_topic = st.sidebar.text_input(
     "1. Tema o idea principal del Reel:", 
-    value="Espíritu, ¿sabes qué hay más allá de la vida?"
+    value="Secretos del universo que la ciencia oculta sobre el tiempo y la conciencia humana."
 )
 
 video_style = st.sidebar.selectbox(
@@ -78,104 +77,85 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
-if st.button("🚀 Generar Reel con Respaldo Inteligente (60s)"):
-    with st.spinner("Paso 1/4: Generando guion estructurado (Buscando proveedor disponible)..."):
+if st.button("🚀 Generar Reel Completo de 60s"):
+    with st.spinner("Paso 1/4: Generando guion extendido de alto impacto..."):
         try:
             prompt = (
-                f"Actúa como un director de contenidos virales. Diseña un guion fluido de exactamente 6 escenas cortas "
+                f"Actúa como un experto guionista de TikTok y Reels virales. Crea un guion extenso y profundo de exactamente 6 escenas "
                 f"sobre el tema: '{user_topic}', adaptado al estilo visual: '{video_style}'. "
-                "Cada texto debe estar en MAYÚSCULAS, ser corto y muy impactante. "
-                "Cada descripción visual debe ser un prompt detallado para generar una imagen hiperrealista que acompañe la narración. "
+                "IMPORTANTE: Cada escena debe contener un párrafo de narración sustancial (de 15 a 25 palabras cada uno) para asegurar que el audio dure aproximadamente 60 segundos en total. "
+                "Cada texto debe estar en MAYÚSCULAS y ser muy atrapante. "
+                "Cada descripción visual debe ser un prompt hiperdetallado en inglés para generar una imagen cinematográfica en 8K. "
                 "Devuelve la respuesta estrictamente separada por líneas con este formato exacto: "
-                "ESCENA 1 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 1]\n"
-                "ESCENA 2 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 2]\n"
-                "ESCENA 3 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 3]\n"
-                "ESCENA 4 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 4]\n"
-                "ESCENA 5 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 5]\n"
-                "ESCENA 6 | [TEXTO EN MAYÚSCULAS] | [Prompt visual detallado 8K para la escena 6]"
+                "ESCENA 1 | [TEXTO NARRATIVO LARGO EN MAYÚSCULAS] | [Prompt visual 8K detallado en inglés]\n"
+                "ESCENA 2 | [TEXTO NARRATIVO LARGO EN MAYÚSCULAS] | [Prompt visual 8K detallado en inglés]\n"
+                "ESCENA 3 | [TEXTO NARRATIVO LARGO EN MAYÚSCULAS] | [Prompt visual 8K detallado en inglés]\n"
+                "ESCENA 4 | [TEXTO NARRATIVO LARGO EN MAYÚSCULAS] | [Prompt visual 8K detallado en inglés]\n"
+                "ESCENA 5 | [TEXTO NARRATIVO LARGO EN MAYÚSCULAS] | [Prompt visual 8K detallado en inglés]\n"
+                "ESCENA 6 | [TEXTO NARRATIVO LARGO EN MAYÚSCULAS] | [Prompt visual 8K detallado en inglés]"
             )
             
             raw_output = None
             
-            # --- CAMINO 1: GEMINI ---
+            # Camino 1: Gemini
             if gemini_client and not raw_output:
-                models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
-                for model_name in models_to_try:
-                    success = False
-                    for attempt in range(2):
-                        try:
-                            response = gemini_client.models.generate_content(
-                                model=model_name,
-                                contents=prompt
-                            )
-                            raw_output = response.text.strip()
-                            success = True
-                            break
-                        except Exception:
-                            time.sleep(2)
-                            continue
-                    if success:
+                for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+                    try:
+                        res = gemini_client.models.generate_content(model=model_name, contents=prompt)
+                        raw_output = res.text.strip()
                         break
+                    except Exception:
+                        continue
 
-            # --- CAMINO 2: GROQ (Respaldo ultrarrápido y gratuito) ---
+            # Camino 2: Groq
             if not raw_output and groq_client:
                 try:
-                    completion = groq_client.chat.completions.create(
+                    comp = groq_client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
-                        messages=[
-                            {"role": "system", "content": "Eres un director de contenidos virales."},
-                            {"role": "user", "content": prompt}
-                        ]
+                        messages=[{"role": "system", "content": "Eres un guionista viral."}, {"role": "user", "content": prompt}]
                     )
-                    raw_output = completion.choices[0].message.content.strip()
+                    raw_output = comp.choices[0].message.content.strip()
                 except Exception:
                     pass
 
-            # --- CAMINO 3: OPENROUTER (Respaldo alternativo) ---
+            # Camino 3: OpenRouter
             if not raw_output and openrouter_client:
                 try:
-                    completion = openrouter_client.chat.completions.create(
+                    comp = openrouter_client.chat.completions.create(
                         model="meta-llama/llama-3.3-70b-instruct:free",
-                        messages=[
-                            {"role": "system", "content": "Eres un director de contenidos virales."},
-                            {"role": "user", "content": prompt}
-                        ]
+                        messages=[{"role": "system", "content": "Eres un guionista viral."}, {"role": "user", "content": prompt}]
                     )
-                    raw_output = completion.choices[0].message.content.strip()
+                    raw_output = comp.choices[0].message.content.strip()
                 except Exception:
                     pass
 
             if not raw_output:
-                raise Exception("Todos los proveedores configurados (Gemini, Groq, OpenRouter) fallaron o se agotaron sus cuotas.")
+                raise Exception("No se pudo generar el guion con ningún proveedor.")
 
-            st.success("¡Guion y prompts visuales generados con éxito!")
-            st.text_area("Desglose del Guion:", raw_output, height=140)
+            st.success("¡Guion extendido generado con éxito!")
+            st.text_area("Desglose:", raw_output, height=140)
 
             scenes_data = []
-            lines = raw_output.split("\n")
-            
-            for line in lines:
+            for line in raw_output.split("\n"):
                 if "|" in line:
                     parts = line.split("|")
                     if len(parts) >= 3:
-                        text_part = parts[1].strip().upper()
-                        visual_part = parts[2].strip()
-                        scenes_data.append({"text": text_part, "visual": visual_part})
+                        scenes_data.append({"text": parts[1].strip().upper(), "visual": parts[2].strip()})
             
             if not scenes_data:
-                scenes_data = [{"text": user_topic.upper(), "visual": f"Hyperrealistic 8k cinematic shot of {user_topic}"}]
+                raise Exception("El formato del guion no fue interpretado correctamente.")
 
             full_narration = " ".join([s["text"] for s in scenes_data])
 
-            with st.spinner("Paso 2/4: Sintetizando locución con Voz Neuronal..."):
+            with st.spinner("Paso 2/4: Sintetizando locución de 60 segundos..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                asyncio.run(generate_neural_voice(full_narration.strip(), selected_voice_id, audio_path))
+                asyncio.run(generate_neural_voice(full_narration, selected_voice_id, audio_path))
                 
                 audio_clip = AudioFileClip(audio_path)
-                total_duration = min(audio_clip.duration, 60)
+                total_duration = audio_clip.duration
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/4: Generando imágenes por escena y aplicando subtítulos gigantes estilo viral..."):
+            with st.spinner("Paso 3/4: Generando imágenes de alta calidad y subtítulos gigantes estilo TikTok..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
@@ -183,62 +163,62 @@ if st.button("🚀 Generar Reel con Respaldo Inteligente (60s)"):
                     
                     if gemini_client:
                         try:
-                            img_response = gemini_client.models.generate_images(
+                            img_res = gemini_client.models.generate_images(
                                 model='imagen-3.0-generate-002',
                                 prompt=f"{scene['visual']}, vertical 9:16 aspect ratio, ultra-detailed, 8k resolution, cinematic lighting, photorealistic masterpiece",
-                                config=dict(
-                                    number_of_images=1,
-                                    output_mime_type="image/jpeg",
-                                    aspect_ratio="9:16",
-                                )
+                                config=dict(number_of_images=1, output_mime_type="image/jpeg", aspect_ratio="9:16")
                             )
-                            for generated_image in img_response.generated_images:
-                                image_bytes = generated_image.image.image_bytes
+                            for gen_img in img_res.generated_images:
                                 img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                                 with open(img_path, "wb") as f:
-                                    f.write(image_bytes)
+                                    f.write(gen_img.image.image_bytes)
                         except Exception:
                             pass
                     
                     if not img_path:
-                        base_img = Image.new('RGB', (1080, 1920), color=(10, 15, 30))
+                        # Fondo cinemático dinámico si la API de imagen no responde en capa gratuita
+                        base_img = Image.new('RGB', (1080, 1920), color=(15, 15, 25))
                         draw_bg = ImageDraw.Draw(base_img)
-                        draw_bg.rectangle([0, 1000, 1080, 1920], fill=(50 + (i*15), 30, 70))
-                        draw_bg.ellipse([100, 200, 980, 1400], fill=(90, 60, 120))
+                        draw_bg.rectangle([0, 0, 1080, 1920], fill=(20 + (i*10), 10, 40 + (i*15)))
                         img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                         base_img.save(img_path)
 
                     try:
                         img_pil = Image.open(img_path).convert("RGB")
-                        
                         txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
                         draw = ImageDraw.Draw(txt_layer)
                         
-                        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                         try:
-                            font = ImageFont.truetype(font_path, 120)
+                            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 90)
                         except:
                             font = ImageFont.load_default()
 
-                        wrapped_text = textwrap.fill(scene['text'], width=12)
+                        # Envolver texto para que luzca como subtítulos estilo TikTok en la parte inferior central
+                        wrapped_text = textwrap.fill(scene['text'], width=18)
                         
                         bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
-                        text_width = bbox[2] - bbox[0]
-                        text_height = bbox[3] - bbox[1]
+                        tw = bbox[2] - bbox[0]
+                        th = bbox[3] - bbox[1]
                         
-                        x = (1080 - text_width) / 2
-                        y = (1920 - text_height) / 2 - 100
+                        x = (1080 - tw) / 2
+                        y = 1350  # Posicionados en el tercio inferior estilo TikTok
                         
-                        outline_range = 10
-                        for adj_x in range(-outline_range, outline_range + 1):
-                            for adj_y in range(-outline_range, outline_range + 1):
-                                if adj_x != 0 or adj_y != 0:
-                                    draw.multiline_text((x + adj_x, y + adj_y), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
+                        # Marco de fondo translúcido para legibilidad perfecta
+                        draw.rounded_rectangle(
+                            [x - 30, y - 20, x + tw + 30, y + th + 20],
+                            radius=20,
+                            fill=(0, 0, 0, 180)
+                        )
                         
-                        draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 255, 255, 255), align="center")
+                        # Efecto de contorno grueso y texto blanco vibrante
+                        for ox in range(-6, 7):
+                            for oy in range(-6, 7):
+                                if ox != 0 or oy != 0:
+                                    draw.multiline_text((x + ox, y + oy), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
+                        
+                        draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 255, 0, 255), align="center") # Amarillo brillante estilo TikTok
                         
                         img_pil = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
-                        
                         subbed_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                         img_pil.save(subbed_img_path)
                         
@@ -251,7 +231,7 @@ if st.button("🚀 Generar Reel con Respaldo Inteligente (60s)"):
                 final_visual = concatenate_videoclips(clip_list)
                 final_video = final_visual.with_audio(audio_clip)
 
-            with st.spinner("Paso 4/4: Renderizando video final en alta definición..."):
+            with st.spinner("Paso 4/4: Renderizando video final..."):
                 output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
                 final_video.write_videofile(
                     output_path,
@@ -262,14 +242,14 @@ if st.button("🚀 Generar Reel con Respaldo Inteligente (60s)"):
                     logger=None
                 )
                 
-                st.success("¡Reel generado con éxito!")
+                st.success(f"¡Reel generado con éxito! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 with open(output_path, "rb") as file:
                     st.download_button(
-                        label="📥 Descargar Reel con Subtítulos Gigantes (.mp4)",
+                        label="📥 Descargar Reel (.mp4)",
                         data=file,
-                        file_name="reel_viral_gigante.mp4",
+                        file_name="reel_viral_tiktok.mp4",
                         mime="video/mp4"
                     )
 
