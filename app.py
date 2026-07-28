@@ -14,13 +14,13 @@ import textwrap
 import random
 
 st.set_page_config(
-    page_title="Generador de Reels Profesional Estructurado (60s)",
+    page_title="Generador de Reels Profesional (60 Segundos Ampliados)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Profesional & Viral (Estilo Tabla)")
-st.markdown("Genera un guion coherente de 60 segundos (Gancho, Hábitos y CTA) con voz neuronal y subtítulos dinámicos.")
+st.title("🎬 Generador de Reels Viral & Ampliado (60s)")
+st.markdown("Crea videos con guiones profundos, voz neuronal de alta retención, fondos temáticos y subtítulos estilo TikTok.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -125,27 +125,32 @@ def create_styled_background(style_name, scene_index):
 
     return img
 
-if st.button("🚀 Generar Reel Estructurado (60s)"):
-    with st.spinner("Paso 1/4: Generando guion estructurado (Gancho + Desarrollo + CTA)..."):
+if st.button("🚀 Generar Reel Ampliado (60s)"):
+    with st.spinner("Paso 1/4: Generando guion ampliado de alto impacto (Gancho + Desarrollo Profundo + CTA)..."):
         try:
             prompt = (
-                f"Actúa como un experto productor de contenidos para Reels y TikTok. "
-                f"Escribe un guion fluido, altamente coherente y profesional de exactamente 5 partes sobre el tema: '{user_topic}', adaptado al estilo visual: '{visual_style}'. "
-                "ESTRUCTURA OBLIGATORIA (Debe seguir exactamente este orden para completar 60 segundos):\n"
-                "1. ESCENA 1 (Gancho): Pregunta inicial potente para retener al espectador (aprox. 15-20 palabras).\n"
-                "2. ESCENA 2 (Hábito 1): Explicación clara del primer hábito (aprox. 20-25 palabras).\n"
-                "3. ESCENA 3 (Hábito 2): Explicación clara del segundo hábito (aprox. 20-25 palabras).\n"
-                "4. ESCENA 4 (Hábito 3): Explicación clara del tercer hábito (aprox. 20-25 palabras).\n"
-                "5. ESCENA 5 (Cierre / CTA): Llamado a la acción claro para interactuar o seguir (aprox. 15-20 palabras).\n"
+                f"Actúa como un experto productor de contenidos virales para Reels y TikTok. "
+                f"Escribe un guion dinámico, persuasivo y muy completo de exactamente 7 escenas sobre el tema: '{user_topic}', adaptado al estilo visual: '{visual_style}'. "
+                "ESTRUCTURA OBLIGATORIA PARA ALCANZAR 60 SEGUNDOS EXACTOS:\n"
+                "- ESCENA 1 (Gancho): Pregunta o afirmación impactante para retener en los primeros 8 segundos (aprox. 30-35 palabras).\n"
+                "- ESCENA 2 (Punto 1 - Explicación): Desarrollo detallado del primer concepto clave (aprox. 30-35 palabras).\n"
+                "- ESCENA 3 (Punto 1 - Ejemplo): Aplicación práctica o beneficio directo del primer concepto (aprox. 30-35 palabras).\n"
+                "- ESCENA 4 (Punto 2 - Explicación): Desarrollo detallado del segundo concepto clave (aprox. 30-35 palabras).\n"
+                "- ESCENA 5 (Punto 2 - Ejemplo): Aplicación práctica o beneficio directo del segundo concepto (aprox. 30-35 palabras).\n"
+                "- ESCENA 6 (Punto 3 o Reflexión): Conclusión analítica o cierre del desarrollo central (aprox. 30-35 palabras).\n"
+                "- ESCENA 7 (Cierre / CTA): Llamado a la acción claro, cercano y profesional para invitar a comentar (aprox. 25-30 palabras).\n"
                 "REQUISITOS:\n"
                 "- Todo el texto de voz en off (VO) debe estar estrictamente en MAYÚSCULAS.\n"
+                "- El tono debe ser conversacional, magnético y de alta retención (nada aburrido).\n"
                 "- Cada escena debe incluir un prompt visual detallado en inglés acorde al estilo '{visual_style}'.\n"
                 "Devuelve la respuesta estrictamente separada por líneas con este formato exacto:\n"
                 "ESCENA 1 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
                 "ESCENA 2 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
                 "ESCENA 3 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
                 "ESCENA 4 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
-                "ESCENA 5 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]"
+                "ESCENA 5 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
+                "ESCENA 6 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]\n"
+                "ESCENA 7 | [TEXTO DE VOZ EN OFF] | [Prompt visual detallado en inglés]"
             )
             
             raw_output = None
@@ -181,10 +186,10 @@ if st.button("🚀 Generar Reel Estructurado (60s)"):
                     pass
 
             if not raw_output:
-                raise Exception("No se pudo generar el guion estructurado con ningún proveedor.")
+                raise Exception("No se pudo generar el guion ampliado con ningún proveedor.")
 
-            st.success("¡Guion estructurado generado con éxito!")
-            st.text_area("Desglose del Guion:", raw_output, height=150)
+            st.success("¡Guion ampliado de 60s generado con éxito!")
+            st.text_area("Desglose del Guion Ampliado:", raw_output, height=200)
 
             scenes_data = []
             for line in raw_output.split("\n"):
@@ -198,7 +203,7 @@ if st.button("🚀 Generar Reel Estructurado (60s)"):
 
             full_narration = " ".join([s["text"] for s in scenes_data])
 
-            with st.spinner("Paso 2/4: Sintetizando locución fluida y natural..."):
+            with st.spinner("Paso 2/4: Sintetizando locución extendida de 60 segundos..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
                 asyncio.run(generate_neural_voice(full_narration, selected_voice_id, audio_path))
                 
@@ -217,18 +222,18 @@ if st.button("🚀 Generar Reel Estructurado (60s)"):
                         draw = ImageDraw.Draw(txt_layer)
                         
                         try:
-                            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
+                            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 75)
                         except:
                             font = ImageFont.load_default()
 
-                        wrapped_text = textwrap.fill(scene['text'], width=16)
+                        wrapped_text = textwrap.fill(scene['text'], width=18)
                         
                         bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
                         tw = bbox[2] - bbox[0]
                         th = bbox[3] - bbox[1]
                         
                         x = (1080 - tw) / 2
-                        y = 1300  # Tercio inferior central (zona segura TikTok/Reels)
+                        y = 1250  # Tercio inferior central (zona segura TikTok/Reels)
                         
                         # Caja de fondo oscura translúcida para visibilidad perfecta
                         draw.rounded_rectangle(
@@ -269,14 +274,14 @@ if st.button("🚀 Generar Reel Estructurado (60s)"):
                     logger=None
                 )
                 
-                st.success(f"¡Reel estructurado generado con éxito! Duración total: {int(total_duration)} segundos.")
+                st.success(f"¡Reel ampliado generado con éxito! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 with open(output_path, "rb") as file:
                     st.download_button(
-                        label="📥 Descargar Reel Estructurado (.mp4)",
+                        label="📥 Descargar Reel de 60s (.mp4)",
                         data=file,
-                        file_name="reel_estructurado_60s.mp4",
+                        file_name="reel_ampliado_60s.mp4",
                         mime="video/mp4"
                     )
 
