@@ -72,7 +72,7 @@ voice_mapping = {
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
 if st.button("🚀 Generar Reel con Gemini (60s)"):
-    with st.spinner("Paso 1/4: Generando guion estructurado con Gemini..."):
+    with st.spinner("Paso 1/4: Generando guion estructurado con Gemini (gestionando cuota)..."):
         try:
             prompt = (
                 f"Actúa como un director de contenidos virales. Diseña un guion fluido de exactamente 6 escenas cortas "
@@ -93,7 +93,7 @@ if st.button("🚀 Generar Reel con Gemini (60s)"):
             
             for model_name in models_to_try:
                 success = False
-                for attempt in range(3):
+                for attempt in range(4):
                     try:
                         response = client.models.generate_content(
                             model=model_name,
@@ -102,8 +102,11 @@ if st.button("🚀 Generar Reel con Gemini (60s)"):
                         success = True
                         break
                     except Exception as api_err:
-                        if "503" in str(api_err) or "UNAVAILABLE" in str(api_err) or "404" in str(api_err):
-                            time.sleep(2 * (attempt + 1))
+                        err_str = str(api_err)
+                        # Si es error de cuota (429) o saturación (503/404), esperamos unos segundos antes de reintentar
+                        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "404" in err_str:
+                            wait_time = 15 * (attempt + 1) # Espera progresiva de 15s, 30s, 45s...
+                            time.sleep(wait_time)
                             continue
                         else:
                             raise api_err
@@ -111,7 +114,7 @@ if st.button("🚀 Generar Reel con Gemini (60s)"):
                     break
             
             if not response:
-                raise Exception("No se pudo conectar con los modelos de Gemini. Verifica tu API Key.")
+                raise Exception("Se ha agotado temporalmente la cuota gratuita de la API. Por favor, espera alrededor de 1 minuto antes de volver a hacer clic en generar.")
 
             raw_output = response.text.strip()
             
