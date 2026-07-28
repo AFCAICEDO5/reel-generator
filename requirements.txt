@@ -1,6 +1,6 @@
 streamlit
+google-genai
+openai
 edge-tts
 pillow
 requests
-openai
-google-generativeai
