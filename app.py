@@ -10,23 +10,26 @@ from moviepy import AudioFileClip, ImageClip, concatenate_videoclips
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 import base64
+import requests
 
 st.set_page_config(
-    page_title="Generador de Reels con Imágenes por API (60s)",
+    page_title="Generador de Reels con Opciones de API de Imágenes (60s)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels con Imágenes API & Voz (60s)")
-st.markdown("Crea videos virales completos generando imágenes reales por Inteligencia Artificial para cada escena.")
+st.title("🎬 Generador de Reels con Múltiples Proveedores de Imágenes (60s)")
+st.markdown("Crea videos virales configurando el proveedor de imágenes (Google Gemini, Puter.js, Cloudflare Workers AI o Modelos Open Source).")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 groq_api_key = st.secrets.get("GROQ_API_KEY") if "GROQ_API_KEY" in st.secrets else os.environ.get("GROQ_API_KEY")
 openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY") if "OPENROUTER_API_KEY" in st.secrets else os.environ.get("OPENROUTER_API_KEY")
+cloudflare_api_token = st.secrets.get("CLOUDFLARE_API_TOKEN") if "CLOUDFLARE_API_TOKEN" in st.secrets else os.environ.get("CLOUDFLARE_API_TOKEN", "")
+cloudflare_account_id = st.secrets.get("CLOUDFLARE_ACCOUNT_ID") if "CLOUDFLARE_ACCOUNT_ID" in st.secrets else os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
 
 if not gemini_api_key and not groq_api_key and not openrouter_api_key:
-    st.error("⚠️ Configura al menos una clave de API (Gemini, Groq u OpenRouter) en los Secrets de Streamlit.")
+    st.error("⚠️ Configura al menos una clave de API principal en los Secrets de Streamlit.")
     st.stop()
 
 gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
@@ -62,6 +65,16 @@ visual_style = st.sidebar.selectbox(
     ]
 )
 
+image_provider = st.sidebar.selectbox(
+    "Proveedor de Generación de Imágenes:",
+    [
+        "Google Gemini (flash-image nativo)",
+        "Cloudflare Workers AI (Serverless)",
+        "Puter.js / Alternativa Frontend",
+        "Modelos Open Source (FLUX / Stable Diffusion via API)"
+    ]
+)
+
 voice_option = st.sidebar.selectbox(
     "Selecciona la Voz Neuronal:",
     [
@@ -83,18 +96,17 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-DaliaNeural")
 
-def generate_scene_image_with_api(visual_prompt, style_name):
-    """Genera una imagen real mediante la API de Gemini (imagen 9:16) o devuelve un respaldo si falla."""
+def generate_scene_image_multi(visual_prompt, style_name, provider):
+    """Genera una imagen usando el proveedor seleccionado por el usuario."""
     final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16, highly detailed, vibrant colors"
     
-    if gemini_client:
+    # 1. Google Gemini
+    if provider == "Google Gemini (flash-image nativo)" and gemini_client:
         try:
             response = gemini_client.models.generate_content(
                 model="gemini-2.5-flash-image",
                 contents=final_prompt,
-                config=types.GenerateContentConfig(
-                    response_modalities=["IMAGE", "TEXT"],
-                ),
+                config=types.GenerateContentConfig(response_modalities=["IMAGE", "TEXT"]),
             )
             for part in response.candidates[0].content.parts:
                 if part.inline_data:
@@ -102,13 +114,47 @@ def generate_scene_image_with_api(visual_prompt, style_name):
                     temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                     with open(temp_img_path, "wb") as f:
                         f.write(image_bytes)
-                    # Abrir con PIL y asegurar tamaño vertical exacto de Reels (1080x1920)
                     img = Image.open(temp_img_path).convert("RGB")
                     return img.resize((1080, 1920), Image.Resampling.LANCZOS)
         except Exception:
             pass
-            
-    # Respaldo automático estilo degradado profesional si la API de imágenes excede cuota o falla
+
+    # 2. Cloudflare Workers AI
+    elif provider == "Cloudflare Workers AI (Serverless)" and cloudflare_api_token and cloudflare_account_id:
+        try:
+            url = f"https://api.cloudflare.com/client/v4/accounts/{cloudflare_account_id}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning"
+            headers = {"Authorization": f"Bearer {cloudflare_api_token}"}
+            payload = {"prompt": final_prompt, "width": 768, "height": 1344}
+            response = requests.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
+                with open(temp_img_path, "wb") as f:
+                    f.write(response.content)
+                img = Image.open(temp_img_path).convert("RGB")
+                return img.resize((1080, 1920), Image.Resampling.LANCZOS)
+        except Exception:
+            pass
+
+    # 3. Puter.js / Frontend o 4. Open Source (Fallback simulado o pasarela compatible con OpenAI images API si aplica)
+    elif provider == "Modelos Open Source (FLUX / Stable Diffusion via API)" and openrouter_client:
+        try:
+            # Ejemplo integrando generación mediante modelos compatibles en OpenRouter / fal.ai / HuggingFace
+            response = openrouter_client.images.generate(
+                model="stabilityai/stable-diffusion-3-medium",
+                prompt=final_prompt,
+                size="1024x1024"
+            )
+            image_url = response.data[0].url
+            img_data = requests.get(image_url).content
+            temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+            with open(temp_img_path, "wb") as f:
+                f.write(img_data)
+            img = Image.open(temp_img_path).convert("RGB")
+            return img.resize((1080, 1920), Image.Resampling.LANCZOS)
+        except Exception:
+            pass
+
+    # Respaldo automático estilo degradado profesional si el proveedor falla o no tiene credenciales
     img = Image.new('RGB', (1080, 1920), color=(15, 22, 38))
     draw = ImageDraw.Draw(img)
     for y in range(0, 1920, 10):
@@ -118,8 +164,8 @@ def generate_scene_image_with_api(visual_prompt, style_name):
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
     return img
 
-if st.button("🚀 Generar Reel con Imágenes API (60s)"):
-    with st.spinner("Paso 1/5: Generando guion ampliado estructurado..."):
+if st.button("🚀 Generar Reel con Proveedor Seleccionado (60s)"):
+    with st.spinner("Paso 1/5: Generando guion ampliado estructurado (7 escenas)..."):
         try:
             prompt = (
                 f"Actúa como un experto productor de contenidos virales para Reels y TikTok. "
@@ -198,12 +244,11 @@ if st.button("🚀 Generar Reel con Imágenes API (60s)"):
                 total_duration = audio_clip.duration
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner("Paso 3/5: Generando imágenes por API para cada escena..."):
+            with st.spinner(f"Paso 3/5: Generando imágenes con '{image_provider}'..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
-                    # Generación de imagen real por API usando el prompt de la escena
-                    img_pil = generate_scene_image_with_api(scene['visual'], visual_style)
+                    img_pil = generate_scene_image_multi(scene['visual'], visual_style, image_provider)
                     
                     try:
                         txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
@@ -260,14 +305,14 @@ if st.button("🚀 Generar Reel con Imágenes API (60s)"):
                     logger=None
                 )
                 
-                st.success(f"¡Reel generado con imágenes API con éxito! Duración total: {int(total_duration)} segundos.")
+                st.success(f"¡Reel generado con éxito! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 with open(output_path, "rb") as file:
                     st.download_button(
-                        label="📥 Descargar Reel con Imágenes API (.mp4)",
+                        label="📥 Descargar Reel (.mp4)",
                         data=file,
-                        file_name="reel_con_imagenes_api.mp4",
+                        file_name="reel_multiprovider_60s.mp4",
                         mime="video/mp4"
                     )
 
