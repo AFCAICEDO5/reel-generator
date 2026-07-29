@@ -13,13 +13,13 @@ import base64
 import requests
 
 st.set_page_config(
-    page_title="Generador de Reels Pro con Múltiples IAs",
+    page_title="Generador de Reels Pro con Psicología de Color",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Pro (Guion Inteligente & DALL-E 3 / Meta / FLUX)")
-st.markdown("Crea videos virales de 60s eligiendo entre múltiples motores de texto e imagen de última generación.")
+st.title("🎬 Generador de Reels Pro (Psicología de Color & DALL-E 3)")
+st.markdown("Crea videos virales con prompts optimizados para alta retención en audiencias de 30 a 80 años.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -62,14 +62,12 @@ user_topic = st.sidebar.text_input(
 visual_style = st.sidebar.selectbox(
     "Estilo Visual de las Escenas:",
     [
-        "Cinematográfico",
         "Fotorrealista",
+        "Cinematográfico",
+        "Estilo Fotografía Profesional",
+        "Arte Sacro / Inspirador",
         "Anime",
-        "Ciencia Ficción",
-        "Terror Oscuro",
-        "Fantasía",
-        "Minecraft",
-        "Pixel Art"
+        "Ciencia Ficción"
     ]
 )
 
@@ -78,7 +76,7 @@ image_provider = st.sidebar.selectbox(
     [
         "OpenAI DALL-E 3 (Alta Calidad)",
         "Google Gemini (flash-image nativo)",
-        "Modelos Open Source (FLUX / Llama Ecosystem via OpenRouter)",
+        "Modelos Open Source (FLUX / OpenRouter)",
         "Cloudflare Workers AI (Serverless)"
     ]
 )
@@ -106,8 +104,15 @@ voice_mapping = {
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-EmilianoNeural")
 
-def generate_scene_image_multi(visual_prompt, style_name, provider):
-    final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16 format, highly detailed, dramatic lighting, cinematic composition"
+def generate_scene_image_psychology(scene_text, visual_prompt, style_name, provider):
+    # Prompt estructurado exactamente como lo solicitaste aplicando psicología de color y contexto de Jesús para 30-80 años
+    final_prompt = (
+        f"Genera imagen hiperrealista 9:16, 4k, estilo: {style_name}. "
+        f"Contexto de la escena: '{scene_text}'. Detalle visual: {visual_prompt}. "
+        f"Con iluminación cinematográfica cálida y suave. "
+        f"Utiliza psicología de color orientada a la paz, la claridad y la confianza para una audiencia de 30 a 80 años, "
+        f"inspirada en los valores de serenidad y luz de Jesús (tonos dorados suaves, azules profundos pacíficos, contrastes limpios y agradables a la vista)."
+    )
     
     # 1. DALL-E 3 de OpenAI
     if provider == "OpenAI DALL-E 3 (Alta Calidad)" and openai_client:
@@ -148,8 +153,8 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    # 3. Modelos Open Source / Ecosistema Meta vía OpenRouter
-    elif provider == "Modelos Open Source (FLUX / Llama Ecosystem via OpenRouter)" and openrouter_client:
+    # 3. OpenRouter
+    elif provider == "Modelos Open Source (FLUX / OpenRouter)" and openrouter_client:
         try:
             response = openrouter_client.images.generate(
                 model="stabilityai/stable-diffusion-3-medium",
@@ -182,7 +187,7 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    # Respaldo por defecto si falla
+    # Respaldo por defecto
     img = Image.new('RGB', (1080, 1920), color=(15, 22, 38))
     draw = ImageDraw.Draw(img)
     for y in range(0, 1920, 10):
@@ -192,14 +197,14 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
     return img
 
-if st.button("🚀 Generar Reel Pro (60s)"):
+if st.button("🚀 Generar Reel Pro (Psicología de Color & 60s)"):
     with st.spinner("Paso 1/5: Creando guion optimizado (Gemini -> OpenAI -> Groq)..."):
         try:
             prompt = (
-                f"Actúa como un experto productor de contenidos virales para Reels y TikTok. "
-                f"Escribe un guion dinámico y completo de exactamente 7 escenas sobre el tema: '{user_topic}', adaptado al estilo visual: '{visual_style}'. "
+                f"Actúa como un experto productor de contenidos virales enfocado en audiencias adultas y seniors (30 a 80 años). "
+                f"Escribe un guion dinámico y completo de exactamente 7 escenas sobre el tema: '{user_topic}'. "
                 "ESTRUCTURA OBLIGATORIA PARA 60 SEGUNDOS:\n"
-                "- ESCENA 1 (Gancho): Pregunta o afirmación impactante (aprox. 30 palabras).\n"
+                "- ESCENA 1 (Gancho): Pregunta o afirmación impactante y cercana (aprox. 30 palabras).\n"
                 "- ESCENA 2 (Punto 1 - Explicación): Desarrollo del primer concepto (aprox. 30 palabras).\n"
                 "- ESCENA 3 (Punto 1 - Ejemplo): Aplicación práctica del primer concepto (aprox. 30 palabras).\n"
                 "- ESCENA 4 (Punto 2 - Explicación): Desarrollo del segundo concepto (aprox. 30 palabras).\n"
@@ -221,7 +226,6 @@ if st.button("🚀 Generar Reel Pro (60s)"):
             
             raw_output = None
             
-            # 1. Gemini
             if gemini_client and not raw_output:
                 for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
                     try:
@@ -231,13 +235,12 @@ if st.button("🚀 Generar Reel Pro (60s)"):
                     except Exception:
                         continue
 
-            # 2. OpenAI
             if not raw_output and openai_client:
                 try:
                     comp = openai_client.chat.completions.create(
                         model="gpt-4o",
                         messages=[
-                            {"role": "system", "content": "Eres un guionista profesional de contenidos virales."},
+                            {"role": "system", "content": "Eres un guionista profesional de contenidos."},
                             {"role": "user", "content": prompt}
                         ]
                     )
@@ -245,7 +248,6 @@ if st.button("🚀 Generar Reel Pro (60s)"):
                 except Exception:
                     pass
 
-            # 3. Groq
             if not raw_output and groq_client:
                 try:
                     comp = groq_client.chat.completions.create(
@@ -282,11 +284,12 @@ if st.button("🚀 Generar Reel Pro (60s)"):
                 total_duration = audio_clip.duration
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner(f"Paso 3/5: Generando imágenes con '{image_provider}'..."):
+            with st.spinner(f"Paso 3/5: Generando imágenes con psicología de color y '{image_provider}'..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
-                    img_pil = generate_scene_image_multi(scene['visual'], visual_style, image_provider)
+                    # Genera la imagen aplicando el prompt con psicología de color, estilo y texto de la escena actual
+                    img_pil = generate_scene_image_psychology(scene['text'], scene['visual'], visual_style, image_provider)
                     
                     try:
                         txt_layer = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
@@ -306,10 +309,11 @@ if st.button("🚀 Generar Reel Pro (60s)"):
                         x = (1080 - tw) / 2
                         y = 1200
                         
+                        # Caja de subtítulo de alta visibilidad y contraste optimizada para adultos mayores
                         draw.rounded_rectangle(
                             [x - 50, y - 30, x + tw + 50, y + th + 30],
                             radius=30,
-                            fill=(10, 10, 10, 230)
+                            fill=(10, 10, 10, 240)
                         )
                         
                         for ox in range(-4, 5):
@@ -317,7 +321,7 @@ if st.button("🚀 Generar Reel Pro (60s)"):
                                 if ox != 0 or oy != 0:
                                     draw.multiline_text((x + ox, y + oy), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                         
-                        draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 230, 0, 255), align="center")
+                        draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 240, 100, 255), align="center")
                         
                         img_pil = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
                     except Exception:
@@ -364,7 +368,7 @@ if st.button("🚀 Generar Reel Pro (60s)"):
                 doc_file_path.write(doc_content)
                 doc_file_path.close()
 
-                st.success(f"¡Reel generado con éxito! Duración total: {int(total_duration)} segundos.")
+                st.success(f"¡Reel generado con éxito aplicando psicología de color! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 col1, col2 = st.columns(2)
@@ -373,7 +377,7 @@ if st.button("🚀 Generar Reel Pro (60s)"):
                         st.download_button(
                             label="📥 Descargar Reel (.mp4)",
                             data=file,
-                            file_name="reel_pro_60s.mp4",
+                            file_name="reel_psicologia_color_60s.mp4",
                             mime="video/mp4"
                         )
                 with col2:
