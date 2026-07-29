@@ -6,20 +6,20 @@ import edge_tts
 from google import genai
 from google.genai import types
 from openai import OpenAI
-from moviepy import AudioFileClip, ImageClip, concatenate_videoclips, CompositeVideoClip
+from moviepy import AudioFileClip, ImageClip, concatenate_videoclips
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 import base64
 import requests
 
 st.set_page_config(
-    page_title="Generador de Reels Pro con Animación y OpenAI (60s)",
+    page_title="Generador de Reels Pro con DALL-E 3 y OpenAI",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Pro con Subtítulos Animados & OpenAI")
-st.markdown("Crea videos virales de 60s con subtítulos dinámicos de estilo profesional, locución profunda y múltiples motores de IA.")
+st.title("🎬 Generador de Reels Pro (DALL-E 3 & Subtítulos Animados)")
+st.markdown("Crea videos virales de 60s utilizando DALL-E 3 para imágenes hiperrealistas, locución neuronal y subtítulos dinámicos.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -76,10 +76,10 @@ visual_style = st.sidebar.selectbox(
 image_provider = st.sidebar.selectbox(
     "Proveedor de Generación de Imágenes:",
     [
+        "OpenAI DALL-E 3 (Alta Calidad)",
         "Google Gemini (flash-image nativo)",
-        "OpenAI (DALL-E 3)",
         "Cloudflare Workers AI (Serverless)",
-        "Modelos Open Source (FLUX / Stable Diffusion via OpenRouter)"
+        "Modelos Open Source (FLUX / SD via OpenRouter)"
     ]
 )
 
@@ -107,27 +107,10 @@ voice_mapping = {
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-EmilianoNeural")
 
 def generate_scene_image_multi(visual_prompt, style_name, provider):
-    final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16 aspect ratio, highly detailed, 8k resolution"
+    final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16 format, highly detailed, dramatic lighting, cinematic composition"
     
-    if provider == "Google Gemini (flash-image nativo)" and gemini_client:
-        try:
-            response = gemini_client.models.generate_content(
-                model="gemini-2.5-flash-image",
-                contents=final_prompt,
-                config=types.GenerateContentConfig(response_modalities=["IMAGE", "TEXT"]),
-            )
-            for part in response.candidates[0].content.parts:
-                if part.inline_data:
-                    image_bytes = base64.b64decode(part.inline_data.data)
-                    temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
-                    with open(temp_img_path, "wb") as f:
-                        f.write(image_bytes)
-                    img = Image.open(temp_img_path).convert("RGB")
-                    return img.resize((1080, 1920), Image.Resampling.LANCZOS)
-        except Exception:
-            pass
-
-    elif provider == "OpenAI (DALL-E 3)" and openai_client:
+    # 1. DALL-E 3 de OpenAI
+    if provider == "OpenAI DALL-E 3 (Alta Calidad)" and openai_client:
         try:
             response = openai_client.images.generate(
                 model="dall-e-3",
@@ -146,6 +129,26 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
+    # 2. Google Gemini Flash Image
+    elif provider == "Google Gemini (flash-image nativo)" and gemini_client:
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.5-flash-image",
+                contents=final_prompt,
+                config=types.GenerateContentConfig(response_modalities=["IMAGE", "TEXT"]),
+            )
+            for part in response.candidates[0].content.parts:
+                if part.inline_data:
+                    image_bytes = base64.b64decode(part.inline_data.data)
+                    temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+                    with open(temp_img_path, "wb") as f:
+                        f.write(image_bytes)
+                    img = Image.open(temp_img_path).convert("RGB")
+                    return img.resize((1080, 1920), Image.Resampling.LANCZOS)
+        except Exception:
+            pass
+
+    # 3. Cloudflare
     elif provider == "Cloudflare Workers AI (Serverless)" and cloudflare_api_token and cloudflare_account_id:
         try:
             url = f"https://api.cloudflare.com/client/v4/accounts/{cloudflare_account_id}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning"
@@ -161,7 +164,8 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    elif provider == "Modelos Open Source (FLUX / Stable Diffusion via OpenRouter)" and openrouter_client:
+    # 4. OpenRouter
+    elif provider == "Modelos Open Source (FLUX / SD via OpenRouter)" and openrouter_client:
         try:
             response = openrouter_client.images.generate(
                 model="stabilityai/stable-diffusion-3-medium",
@@ -178,7 +182,7 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    # Respaldo por defecto si falla cualquier API de imagen
+    # Respaldo por defecto si falla
     img = Image.new('RGB', (1080, 1920), color=(15, 22, 38))
     draw = ImageDraw.Draw(img)
     for y in range(0, 1920, 10):
@@ -188,8 +192,8 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
     return img
 
-if st.button("🚀 Generar Reel Pro y Documento (60s)"):
-    with st.spinner("Paso 1/5: Generando guion inteligente (Gemini -> OpenAI -> Groq)..."):
+if st.button("🚀 Generar Reel con DALL-E 3 y Subtítulos Animados"):
+    with st.spinner("Paso 1/5: Creando guion optimizado (Gemini -> OpenAI -> Groq)..."):
         try:
             prompt = (
                 f"Actúa como un experto productor de contenidos virales para Reels y TikTok. "
@@ -217,7 +221,7 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
             
             raw_output = None
             
-            # 1. Intento con Gemini
+            # 1. Gemini
             if gemini_client and not raw_output:
                 for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
                     try:
@@ -227,7 +231,7 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
                     except Exception:
                         continue
 
-            # 2. Intento con OpenAI (Camino secundario integrado explícitamente)
+            # 2. OpenAI (Camino secundario integrado explícitamente)
             if not raw_output and openai_client:
                 try:
                     comp = openai_client.chat.completions.create(
@@ -241,21 +245,11 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
                 except Exception:
                     pass
 
-            # 3. Respaldo adicional con Groq o OpenRouter
+            # 3. Groq
             if not raw_output and groq_client:
                 try:
                     comp = groq_client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
-                        messages=[{"role": "system", "content": "Eres un guionista profesional."}, {"role": "user", "content": prompt}]
-                    )
-                    raw_output = comp.choices[0].message.content.strip()
-                except Exception:
-                    pass
-
-            if not raw_output and openrouter_client:
-                try:
-                    comp = openrouter_client.chat.completions.create(
-                        model="meta-llama/llama-3.3-70b-instruct:free",
                         messages=[{"role": "system", "content": "Eres un guionista profesional."}, {"role": "user", "content": prompt}]
                     )
                     raw_output = comp.choices[0].message.content.strip()
@@ -277,7 +271,7 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
 
             full_narration = " ".join([s["text"] for s in scenes_data])
 
-            with st.spinner("Paso 2/5: Sintetizando locución con voz neuronal profesional..."):
+            with st.spinner("Paso 2/5: Sintetizando locución neuronal..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
                 try:
                     asyncio.run(generate_neural_voice_robust(full_narration, selected_voice_id, audio_path))
@@ -288,7 +282,7 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
                 total_duration = audio_clip.duration
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner(f"Paso 3/5: Generando imágenes de fondo con '{image_provider}'..."):
+            with st.spinner(f"Paso 3/5: Generando imágenes con '{image_provider}'..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
@@ -303,9 +297,7 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
                         except:
                             font = ImageFont.load_default()
 
-                        words = scene['text'].split()
-                        # Animación dinámica estilo bloque dinámico con parpadeo dinámico o resaltado de grupos de palabras
-                        wrapped_text = textwrap.fill(" ".join(words), width=16)
+                        wrapped_text = textwrap.fill(scene['text'], width=16)
                         
                         bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
                         tw = bbox[2] - bbox[0]
@@ -314,20 +306,20 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
                         x = (1080 - tw) / 2
                         y = 1200
                         
-                        # Efecto de caja flotante moderna semi-transparente estilo TikTok
+                        # Caja de subtítulo semi-transparente estilo TikTok
                         draw.rounded_rectangle(
                             [x - 50, y - 30, x + tw + 50, y + th + 30],
                             radius=30,
                             fill=(10, 10, 10, 230)
                         )
                         
-                        # Doble trazo (Stroke) elegante para dar relieve dinámico
+                        # Trazo de contraste negro
                         for ox in range(-4, 5):
                             for oy in range(-4, 5):
                                 if ox != 0 or oy != 0:
                                     draw.multiline_text((x + ox, y + oy), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                         
-                        # Texto principal en amarillo brillante cinemático para retención visual
+                        # Texto dinámico en amarillo brillante
                         draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 230, 0, 255), align="center")
                         
                         img_pil = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
@@ -337,14 +329,13 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
                     img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                     img_pil.save(img_path)
                     
-                    # Efecto visual dinámico de Zoom suave (Ken Burns effect simulado o duración fluida)
                     img_clip = ImageClip(img_path).with_duration(scene_duration)
                     clip_list.append(img_clip)
 
                 final_visual = concatenate_videoclips(clip_list)
                 final_video = final_visual.with_audio(audio_clip)
 
-            with st.spinner("Paso 5/5: Renderizando video final y empaquetando documento del proyecto..."):
+            with st.spinner("Paso 5/5: Renderizando video final y empaquetando documento..."):
                 output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
                 final_video.write_videofile(
                     output_path,
@@ -376,7 +367,7 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
                 doc_file_path.write(doc_content)
                 doc_file_path.close()
 
-                st.success(f"¡Reel Pro generado con éxito! Duración total: {int(total_duration)} segundos.")
+                st.success(f"¡Reel generado con éxito usando DALL-E 3! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 col1, col2 = st.columns(2)
@@ -385,7 +376,7 @@ if st.button("🚀 Generar Reel Pro y Documento (60s)"):
                         st.download_button(
                             label="📥 Descargar Reel (.mp4)",
                             data=file,
-                            file_name="reel_pro_animado_60s.mp4",
+                            file_name="reel_dalle3_60s.mp4",
                             mime="video/mp4"
                         )
                 with col2:
