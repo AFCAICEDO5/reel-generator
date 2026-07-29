@@ -13,13 +13,13 @@ import base64
 import requests
 
 st.set_page_config(
-    page_title="Generador de Reels Pro con DALL-E 3 y OpenAI",
+    page_title="Generador de Reels Pro con Múltiples IAs",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels Pro (DALL-E 3 & Subtítulos Animados)")
-st.markdown("Crea videos virales de 60s utilizando DALL-E 3 para imágenes hiperrealistas, locución neuronal y subtítulos dinámicos.")
+st.title("🎬 Generador de Reels Pro (Guion Inteligente & DALL-E 3 / Meta / FLUX)")
+st.markdown("Crea videos virales de 60s eligiendo entre múltiples motores de texto e imagen de última generación.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
@@ -78,8 +78,8 @@ image_provider = st.sidebar.selectbox(
     [
         "OpenAI DALL-E 3 (Alta Calidad)",
         "Google Gemini (flash-image nativo)",
-        "Cloudflare Workers AI (Serverless)",
-        "Modelos Open Source (FLUX / SD via OpenRouter)"
+        "Modelos Open Source (FLUX / Llama Ecosystem via OpenRouter)",
+        "Cloudflare Workers AI (Serverless)"
     ]
 )
 
@@ -148,24 +148,8 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    # 3. Cloudflare
-    elif provider == "Cloudflare Workers AI (Serverless)" and cloudflare_api_token and cloudflare_account_id:
-        try:
-            url = f"https://api.cloudflare.com/client/v4/accounts/{cloudflare_account_id}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning"
-            headers = {"Authorization": f"Bearer {cloudflare_api_token}"}
-            payload = {"prompt": final_prompt, "width": 768, "height": 1344}
-            response = requests.post(url, headers=headers, json=payload)
-            if response.status_code == 200:
-                temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
-                with open(temp_img_path, "wb") as f:
-                    f.write(response.content)
-                img = Image.open(temp_img_path).convert("RGB")
-                return img.resize((1080, 1920), Image.Resampling.LANCZOS)
-        except Exception:
-            pass
-
-    # 4. OpenRouter
-    elif provider == "Modelos Open Source (FLUX / SD via OpenRouter)" and openrouter_client:
+    # 3. Modelos Open Source / Ecosistema Meta vía OpenRouter
+    elif provider == "Modelos Open Source (FLUX / Llama Ecosystem via OpenRouter)" and openrouter_client:
         try:
             response = openrouter_client.images.generate(
                 model="stabilityai/stable-diffusion-3-medium",
@@ -182,6 +166,22 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
+    # 4. Cloudflare
+    elif provider == "Cloudflare Workers AI (Serverless)" and cloudflare_api_token and cloudflare_account_id:
+        try:
+            url = f"https://api.cloudflare.com/client/v4/accounts/{cloudflare_account_id}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning"
+            headers = {"Authorization": f"Bearer {cloudflare_api_token}"}
+            payload = {"prompt": final_prompt, "width": 768, "height": 1344}
+            response = requests.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
+                with open(temp_img_path, "wb") as f:
+                    f.write(response.content)
+                img = Image.open(temp_img_path).convert("RGB")
+                return img.resize((1080, 1920), Image.Resampling.LANCZOS)
+        except Exception:
+            pass
+
     # Respaldo por defecto si falla
     img = Image.new('RGB', (1080, 1920), color=(15, 22, 38))
     draw = ImageDraw.Draw(img)
@@ -192,7 +192,7 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
     return img
 
-if st.button("🚀 Generar Reel con DALL-E 3 y Subtítulos Animados"):
+if st.button("🚀 Generar Reel Pro (60s)"):
     with st.spinner("Paso 1/5: Creando guion optimizado (Gemini -> OpenAI -> Groq)..."):
         try:
             prompt = (
@@ -231,7 +231,7 @@ if st.button("🚀 Generar Reel con DALL-E 3 y Subtítulos Animados"):
                     except Exception:
                         continue
 
-            # 2. OpenAI (Camino secundario integrado explícitamente)
+            # 2. OpenAI
             if not raw_output and openai_client:
                 try:
                     comp = openai_client.chat.completions.create(
@@ -306,20 +306,17 @@ if st.button("🚀 Generar Reel con DALL-E 3 y Subtítulos Animados"):
                         x = (1080 - tw) / 2
                         y = 1200
                         
-                        # Caja de subtítulo semi-transparente estilo TikTok
                         draw.rounded_rectangle(
                             [x - 50, y - 30, x + tw + 50, y + th + 30],
                             radius=30,
                             fill=(10, 10, 10, 230)
                         )
                         
-                        # Trazo de contraste negro
                         for ox in range(-4, 5):
                             for oy in range(-4, 5):
                                 if ox != 0 or oy != 0:
                                     draw.multiline_text((x + ox, y + oy), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                         
-                        # Texto dinámico en amarillo brillante
                         draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 230, 0, 255), align="center")
                         
                         img_pil = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
@@ -367,7 +364,7 @@ if st.button("🚀 Generar Reel con DALL-E 3 y Subtítulos Animados"):
                 doc_file_path.write(doc_content)
                 doc_file_path.close()
 
-                st.success(f"¡Reel generado con éxito usando DALL-E 3! Duración total: {int(total_duration)} segundos.")
+                st.success(f"¡Reel generado con éxito! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 col1, col2 = st.columns(2)
@@ -376,7 +373,7 @@ if st.button("🚀 Generar Reel con DALL-E 3 y Subtítulos Animados"):
                         st.download_button(
                             label="📥 Descargar Reel (.mp4)",
                             data=file,
-                            file_name="reel_dalle3_60s.mp4",
+                            file_name="reel_pro_60s.mp4",
                             mime="video/mp4"
                         )
                 with col2:
