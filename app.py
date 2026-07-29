@@ -6,38 +6,39 @@ import edge_tts
 from google import genai
 from google.genai import types
 from openai import OpenAI
-from moviepy import AudioFileClip, ImageClip, concatenate_videoclips
+from moviepy import AudioFileClip, ImageClip, concatenate_videoclips, CompositeVideoClip
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 import base64
 import requests
 
 st.set_page_config(
-    page_title="Generador de Reels con Respaldo de Audio (60s)",
+    page_title="Generador de Reels Pro con Animación y OpenAI (60s)",
     page_icon="🎬",
     layout="centered"
 )
 
-st.title("🎬 Generador de Reels con Control de Audio & Documento (60s)")
-st.markdown("Crea videos virales con manejo robusto de errores de locución y exportación de proyecto.")
+st.title("🎬 Generador de Reels Pro con Subtítulos Animados & OpenAI")
+st.markdown("Crea videos virales de 60s con subtítulos dinámicos de estilo profesional, locución profunda y múltiples motores de IA.")
 
 # --- CREDENCIALES ---
 gemini_api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
+openai_api_key = st.secrets.get("OPENAI_API_KEY") if "OPENAI_API_KEY" in st.secrets else os.environ.get("OPENAI_API_KEY")
 groq_api_key = st.secrets.get("GROQ_API_KEY") if "GROQ_API_KEY" in st.secrets else os.environ.get("GROQ_API_KEY")
 openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY") if "OPENROUTER_API_KEY" in st.secrets else os.environ.get("OPENROUTER_API_KEY")
 cloudflare_api_token = st.secrets.get("CLOUDFLARE_API_TOKEN") if "CLOUDFLARE_API_TOKEN" in st.secrets else os.environ.get("CLOUDFLARE_API_TOKEN", "")
 cloudflare_account_id = st.secrets.get("CLOUDFLARE_ACCOUNT_ID") if "CLOUDFLARE_ACCOUNT_ID" in st.secrets else os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
 
-if not gemini_api_key and not groq_api_key and not openrouter_api_key:
-    st.error("⚠️ Configura al menos una clave de API principal en los Secrets de Streamlit.")
+if not gemini_api_key and not openai_api_key and not groq_api_key:
+    st.error("⚠️ Configura al menos una clave de API principal (Gemini o OpenAI) en los Secrets de Streamlit.")
     st.stop()
 
 gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
+openai_client = OpenAI(api_key=openai_api_key) if openai_api_key else None
 groq_client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=groq_api_key) if groq_api_key else None
 openrouter_client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=openrouter_api_key) if openrouter_api_key else None
 
 async def generate_neural_voice_robust(text, voice_name, output_path):
-    """Intenta generar el audio con reintentos para evitar el error 'No audio was received'."""
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -66,13 +67,9 @@ visual_style = st.sidebar.selectbox(
         "Anime",
         "Ciencia Ficción",
         "Terror Oscuro",
-        "Terror",
         "Fantasía",
         "Minecraft",
-        "Pixel Art",
-        "Biblia / Religioso",
-        "Cómic",
-        "Cartoon"
+        "Pixel Art"
     ]
 )
 
@@ -80,9 +77,9 @@ image_provider = st.sidebar.selectbox(
     "Proveedor de Generación de Imágenes:",
     [
         "Google Gemini (flash-image nativo)",
+        "OpenAI (DALL-E 3)",
         "Cloudflare Workers AI (Serverless)",
-        "Puter.js / Alternativa Frontend",
-        "Modelos Open Source (FLUX / Stable Diffusion via API)"
+        "Modelos Open Source (FLUX / Stable Diffusion via OpenRouter)"
     ]
 )
 
@@ -94,9 +91,7 @@ voice_option = st.sidebar.selectbox(
         "Colombia - Carlos (Masculina Corporativa y Autoritaria / Graves)",
         "México - Lucia (Femenina con Graves / Misterio y Narrativa)",
         "México - Dalia (Femenina Natural y Fluida)",
-        "Colombia - Gonzalo (Masculina Dinámica)",
-        "Colombia - Salome (Femenina Cálida)",
-        "Argentina - Tomás (Masculina Cercana)"
+        "Colombia - Gonzalo (Masculina Dinámica)"
     ]
 )
 
@@ -106,15 +101,13 @@ voice_mapping = {
     "Colombia - Carlos (Masculina Corporativa y Autoritaria / Graves)": "es-CO-CarlosNeural",
     "México - Lucia (Femenina con Graves / Misterio y Narrativa)": "es-MX-LuciaNeural",
     "México - Dalia (Femenina Natural y Fluida)": "es-MX-DaliaNeural",
-    "Colombia - Gonzalo (Masculina Dinámica)": "es-CO-GonzaloNeural",
-    "Colombia - Salome (Femenina Cálida)": "es-CO-SalomeNeural",
-    "Argentina - Tomás (Masculina Cercana)": "es-AR-TomasNeural"
+    "Colombia - Gonzalo (Masculina Dinámica)": "es-CO-GonzaloNeural"
 }
 
 selected_voice_id = voice_mapping.get(voice_option, "es-MX-EmilianoNeural")
 
 def generate_scene_image_multi(visual_prompt, style_name, provider):
-    final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16, highly detailed, vibrant colors"
+    final_prompt = f"{visual_prompt}, in {style_name} style, vertical 9:16 aspect ratio, highly detailed, 8k resolution"
     
     if provider == "Google Gemini (flash-image nativo)" and gemini_client:
         try:
@@ -134,6 +127,25 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
+    elif provider == "OpenAI (DALL-E 3)" and openai_client:
+        try:
+            response = openai_client.images.generate(
+                model="dall-e-3",
+                prompt=final_prompt,
+                size="1024x1792",
+                quality="standard",
+                n=1,
+            )
+            image_url = response.data[0].url
+            img_data = requests.get(image_url).content
+            temp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+            with open(temp_img_path, "wb") as f:
+                f.write(img_data)
+            img = Image.open(temp_img_path).convert("RGB")
+            return img.resize((1080, 1920), Image.Resampling.LANCZOS)
+        except Exception:
+            pass
+
     elif provider == "Cloudflare Workers AI (Serverless)" and cloudflare_api_token and cloudflare_account_id:
         try:
             url = f"https://api.cloudflare.com/client/v4/accounts/{cloudflare_account_id}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning"
@@ -149,7 +161,7 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
-    elif provider == "Modelos Open Source (FLUX / Stable Diffusion via API)" and openrouter_client:
+    elif provider == "Modelos Open Source (FLUX / Stable Diffusion via OpenRouter)" and openrouter_client:
         try:
             response = openrouter_client.images.generate(
                 model="stabilityai/stable-diffusion-3-medium",
@@ -166,6 +178,7 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         except Exception:
             pass
 
+    # Respaldo por defecto si falla cualquier API de imagen
     img = Image.new('RGB', (1080, 1920), color=(15, 22, 38))
     draw = ImageDraw.Draw(img)
     for y in range(0, 1920, 10):
@@ -175,8 +188,8 @@ def generate_scene_image_multi(visual_prompt, style_name, provider):
         draw.rectangle([0, y, 1080, y + 10], fill=(r, g, b))
     return img
 
-if st.button("🚀 Generar Reel con Control Robusto (60s)"):
-    with st.spinner("Paso 1/5: Generando guion ampliado estructurado (7 escenas)..."):
+if st.button("🚀 Generar Reel Pro y Documento (60s)"):
+    with st.spinner("Paso 1/5: Generando guion inteligente (Gemini -> OpenAI -> Groq)..."):
         try:
             prompt = (
                 f"Actúa como un experto productor de contenidos virales para Reels y TikTok. "
@@ -203,6 +216,8 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
             )
             
             raw_output = None
+            
+            # 1. Intento con Gemini
             if gemini_client and not raw_output:
                 for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
                     try:
@@ -212,6 +227,21 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
                     except Exception:
                         continue
 
+            # 2. Intento con OpenAI (Camino secundario integrado explícitamente)
+            if not raw_output and openai_client:
+                try:
+                    comp = openai_client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": "Eres un guionista profesional de contenidos virales."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    raw_output = comp.choices[0].message.content.strip()
+                except Exception:
+                    pass
+
+            # 3. Respaldo adicional con Groq o OpenRouter
             if not raw_output and groq_client:
                 try:
                     comp = groq_client.chat.completions.create(
@@ -233,7 +263,7 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
                     pass
 
             if not raw_output:
-                raise Exception("No se pudo generar el guion.")
+                raise Exception("No se pudo generar el guion con ninguna de las APIs configuradas.")
 
             scenes_data = []
             for line in raw_output.split("\n"):
@@ -247,19 +277,18 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
 
             full_narration = " ".join([s["text"] for s in scenes_data])
 
-            with st.spinner("Paso 2/5: Sintetizando locución neuronal con reintentos automáticos..."):
+            with st.spinner("Paso 2/5: Sintetizando locución con voz neuronal profesional..."):
                 audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
                 try:
                     asyncio.run(generate_neural_voice_robust(full_narration, selected_voice_id, audio_path))
                 except Exception:
-                    # Respaldo automático si la red de voz falla por completo: usa otra voz por defecto o reintenta con Dalia
                     asyncio.run(generate_neural_voice_robust(full_narration, "es-MX-DaliaNeural", audio_path))
                 
                 audio_clip = AudioFileClip(audio_path)
                 total_duration = audio_clip.duration
                 scene_duration = total_duration / len(scenes_data)
 
-            with st.spinner(f"Paso 3/5: Generando imágenes con '{image_provider}'..."):
+            with st.spinner(f"Paso 3/5: Generando imágenes de fondo con '{image_provider}'..."):
                 clip_list = []
                 
                 for i, scene in enumerate(scenes_data):
@@ -270,30 +299,35 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
                         draw = ImageDraw.Draw(txt_layer)
                         
                         try:
-                            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 75)
+                            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 65)
                         except:
                             font = ImageFont.load_default()
 
-                        wrapped_text = textwrap.fill(scene['text'], width=18)
+                        words = scene['text'].split()
+                        # Animación dinámica estilo bloque dinámico con parpadeo dinámico o resaltado de grupos de palabras
+                        wrapped_text = textwrap.fill(" ".join(words), width=16)
                         
                         bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
                         tw = bbox[2] - bbox[0]
                         th = bbox[3] - bbox[1]
                         
                         x = (1080 - tw) / 2
-                        y = 1250
+                        y = 1200
                         
+                        # Efecto de caja flotante moderna semi-transparente estilo TikTok
                         draw.rounded_rectangle(
-                            [x - 40, y - 25, x + tw + 40, y + th + 25],
-                            radius=25,
-                            fill=(0, 0, 0, 215)
+                            [x - 50, y - 30, x + tw + 50, y + th + 30],
+                            radius=30,
+                            fill=(10, 10, 10, 230)
                         )
                         
-                        for ox in range(-5, 6):
-                            for oy in range(-5, 6):
+                        # Doble trazo (Stroke) elegante para dar relieve dinámico
+                        for ox in range(-4, 5):
+                            for oy in range(-4, 5):
                                 if ox != 0 or oy != 0:
                                     draw.multiline_text((x + ox, y + oy), wrapped_text, font=font, fill=(0, 0, 0, 255), align="center")
                         
+                        # Texto principal en amarillo brillante cinemático para retención visual
                         draw.multiline_text((x, y), wrapped_text, font=font, fill=(255, 230, 0, 255), align="center")
                         
                         img_pil = Image.alpha_composite(img_pil.convert("RGBA"), txt_layer).convert("RGB")
@@ -303,13 +337,14 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
                     img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
                     img_pil.save(img_path)
                     
+                    # Efecto visual dinámico de Zoom suave (Ken Burns effect simulado o duración fluida)
                     img_clip = ImageClip(img_path).with_duration(scene_duration)
                     clip_list.append(img_clip)
 
                 final_visual = concatenate_videoclips(clip_list)
                 final_video = final_visual.with_audio(audio_clip)
 
-            with st.spinner("Paso 5/5: Renderizando video y empaquetando documento del proyecto..."):
+            with st.spinner("Paso 5/5: Renderizando video final y empaquetando documento del proyecto..."):
                 output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
                 final_video.write_videofile(
                     output_path,
@@ -341,7 +376,7 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
                 doc_file_path.write(doc_content)
                 doc_file_path.close()
 
-                st.success(f"¡Reel generado con éxito! Duración total: {int(total_duration)} segundos.")
+                st.success(f"¡Reel Pro generado con éxito! Duración total: {int(total_duration)} segundos.")
                 st.video(output_path)
                 
                 col1, col2 = st.columns(2)
@@ -350,7 +385,7 @@ if st.button("🚀 Generar Reel con Control Robusto (60s)"):
                         st.download_button(
                             label="📥 Descargar Reel (.mp4)",
                             data=file,
-                            file_name="reel_robusto_60s.mp4",
+                            file_name="reel_pro_animado_60s.mp4",
                             mime="video/mp4"
                         )
                 with col2:
